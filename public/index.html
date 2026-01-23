@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบจองคิว - ลงทะเบียนลูกค้า</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="theme.js" defer></script>
+</head>
+
+<body>
+  <div class="container">
+    <h1 style="font-family: 'Great Vibes', cursive; font-size: 4em; font-weight: 400;">Helloxglitter</h1>
+    <p class="subtitle">*ੈ✩‧₊˚༺☆༻กรุณากรอกข้อมูลเพื่อจองคิว༺☆༻*ੈ✩‧₊˚</p>
+
+    <form id="queueForm" class="booking-form-grid">
+      <!-- Admin Selection -->
+      <div class="form-group full-width admin-select-compact">
+        <label for="recordedBy">👤 แอดมิน:</label>
+        <select id="recordedBy" name="recordedBy" required style="flex: 1; border: none; background: transparent; font-weight: 600;">
+          <option value="">-- เลือก --</option>
+          <option value="แอดมินกัมมี่">แอดมินกัมมี่</option>
+          <option value="แอดมินเยลลี่">แอดมินเยลลี่</option>
+          <option value="อื่นๆ">อื่นๆ</option>
+        </select>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="name">ชื่อ-นามสกุล *</label>
+        <input type="text" id="name" name="name" placeholder="กรอกชื่อ-นามสกุล" required>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">เบอร์โทรศัพท์ *</label>
+        <input type="tel" id="phone" name="phone" placeholder="0xxxxxxxxx"
+          pattern="[0-9]{9,10}" title="กรุณากรอกเบอร์โทรศัพท์เป็นตัวเลข 9-10 หลัก" required>
+      </div>
+
+      <div class="form-group">
+        <label for="tracking">หมายเลข Order *</label>
+        <input type="text" id="tracking" name="tracking" placeholder="เลข Order" required>
+      </div>
+
+      <div class="form-group">
+        <label for="channel">ช่องทาง *</label>
+        <select id="channel" name="channel" required>
+          <option value="">-- เลือก --</option>
+          <option value="Shopee">Shopee</option>
+          <option value="Line">Line</option>
+          <option value="TikTok">TikTok</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="product">สินค้า *</label>
+        <select id="product" name="product" required>
+          <option value="">-- เลือก --</option>
+          <option value="3 กลต 6">3 กลต 6</option>
+          <option value="12 กลต 21">12 กลต 21</option>
+        </select>
+      </div>
+
+      <div class="form-group full-width checkbox-group">
+        <input type="checkbox" id="addon" name="addon">
+        <label for="addon">เพิ่มไส้ (3กรต6 +50฿ / 12กรต21 +100฿)</label>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="note">หมายเหตุ</label>
+        <input type="text" id="note" name="note" placeholder="ระบุเหตุเพิ่มเติม (ถ้ามี)">
+      </div>
+
+      <button type="submit" class="btn">จองคิว</button>
+    </form>
+
+    <div class="link-container">
+      <a href="/dashboard.html">🖥️ ไปหน้า Dashboard</a>
+    </div>
+  </div>
+
+  <div id="notification" class="notification"></div>
+
+  <script>
+    const form = document.getElementById('queueForm');
+    const notification = document.getElementById('notification');
+
+    // Show notification function
+    function showNotification(message, success = true) {
+      notification.textContent = message;
+      notification.style.background = success ? '#10b981' : '#ef4444';
+      notification.classList.add('show');
+
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Dynamic Channel Highlight
+    const channelSelect = document.getElementById('channel');
+
+    channelSelect.addEventListener('change', function () {
+      const value = this.value;
+      this.style.color = 'white'; // Default text to white when selected
+      this.style.fontWeight = '500';
+
+      switch (value) {
+        case 'Line':
+          this.style.backgroundColor = '#06c755';
+          this.style.borderColor = '#06c755';
+          break;
+        case 'Shopee':
+          this.style.backgroundColor = '#ee4d2d';
+          this.style.borderColor = '#ee4d2d';
+          break;
+        case 'TikTok':
+          this.style.backgroundColor = '#000000';
+          this.style.borderColor = '#000000';
+          break;
+        default:
+          this.style.backgroundColor = 'white';
+          this.style.color = '#333';
+          this.style.borderColor = '#e0e0e0';
+      }
+    });
+
+    // Admin Selection Persistence Logic
+    const recordedBySelect = document.getElementById('recordedBy');
+
+    // Load last admin from localStorage
+    const savedAdmin = localStorage.getItem('lastAdmin');
+    if (savedAdmin) {
+      recordedBySelect.value = savedAdmin;
+    }
+
+    // Save admin preference immediately when changed
+    recordedBySelect.addEventListener('change', function () {
+      if (this.value) {
+        localStorage.setItem('lastAdmin', this.value);
+      }
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('name').value;
+      const tracking = document.getElementById('tracking').value;
+      const phone = document.getElementById('phone').value;
+      const note = document.getElementById('note').value;
+      const channel = document.getElementById('channel').value;
+      const product = document.getElementById('product').value;
+      const isAddon = document.getElementById('addon').checked;
+
+      const recordedBy = document.getElementById('recordedBy').value;
+
+      // Price Logic
+      let addonPrice = 0;
+      if (isAddon) {
+        if (product === '3 กลต 6') addonPrice = 50;
+        if (product === '12 กลต 21') addonPrice = 100;
+      }
+
+      const formData = {
+        name, tracking, phone, note, channel, product,
+        addon: isAddon ? 'เพิ่มไส้' : '-',
+        price: addonPrice,
+        recordedBy
+      };
+
+      // Save admin preference
+      localStorage.setItem('lastAdmin', recordedBy);
+
+      try {
+        const response = await fetch('/api/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showNotification('✅ ' + result.message, true);
+          form.reset();
+          // Restore admin name after reset
+          document.getElementById('recordedBy').value = recordedBy;
+          // Trigger change event to re-apply color styles
+          document.getElementById('channel').dispatchEvent(new Event('change'));
+        } else {
+          showNotification('❌ ' + result.message, false);
+        }
+      } catch (error) {
+        showNotification('❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', false);
+        console.error('Error:', error);
+      }
+    });
+  </script>
+</body>
+
+</html>

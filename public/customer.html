@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตรวจสอบสถานะคิว</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="theme.js" defer></script>
+    <style>
+        /* Specific Styles for Customer Page */
+        @keyframes pulse-text {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .search-section {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-card {
+            background: var(--result-card-bg);
+            border: 2px solid var(--result-card-border);
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+            /* Hidden by default */
+            animation: fadeIn 0.5s ease;
+        }
+
+        .result-card.highlight {
+            border-color: #ff758c;
+            box-shadow: 0 10px 30px rgba(255, 117, 140, 0.2);
+        }
+
+        .my-queue-number {
+            font-size: 2em;
+            /* Reduced from 3em */
+            font-weight: bold;
+            background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            background-size: 200% auto;
+            animation: shimmer 3s linear infinite;
+            margin: 10px 0;
+            display: block;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #dcfce7;
+            color: #166534;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container dashboard-container">
+        <h1 style="font-family: 'Great Vibes', cursive; font-size: 3em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxgliiter</h1>
+        <h1>🔍 ตรวจสอบสถานะคิว</h1>
+        <p class="subtitle">เช็คคิวได้ง่ายๆ เพียงกรอกเบอร์โทรศัพท์เลยงับ</p>
+
+        <!-- Search Section -->
+        <div class="search-section" style="max-width: 400px; margin: 0 auto; padding: 25px; border-radius: 16px; background: var(--input-bg); border: 1px solid var(--input-border); box-shadow: var(--card-shadow);">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="searchPhone" style="text-align: center; font-size: 1.1em; margin-bottom: 15px; display: block; color: var(--text-primary);">กรอกเบอร์โทรศัพท์เพื่อค้นหา</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="tel" id="searchPhone" placeholder="เบอร์โทรศัพท์..." style="flex: 1; padding: 10px 15px; font-size: 1em; border-radius: 25px;">
+                    <button onclick="checkQueue()" class="btn" style="width: auto; margin-top: 0; padding: 0 25px; font-size: 1em; border-radius: 25px;">
+                        🔍 ค้นหา
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result Display -->
+            <div id="resultCard" class="result-card">
+                <div id="queueFoundDetails">
+                    <h3>สถานะคิวของคุณ</h3>
+                    <span class="my-queue-number" id="myQueueNum">-</span>
+                    <p id="queueStatusText">กำลังรอคิว</p>
+                    <div id="queuesAheadContainer" style="margin-top: 15px; font-size: 1.2em;">
+                        อีก <strong class="text-pink-shimmer" style="font-size: 1.4em;" id="queuesAhead">0</strong> คิว
+                        จะถึงคิวคุณ
+                    </div>
+                </div>
+                <div id="queueNotFound" style="display: none;">
+                    <h3 style="color: #636e72;">❌ ไม่พบข้อมูลคิว</h3>
+                    <p>กรุณาตรวจสอบเบอร์โทรศัพท์อีกครั้ง</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue List Removed -->
+        <!-- <div class="queue-header"> ... </div> -->
+        <!-- <div id="queueList" class="queue-list"> ... </div> -->
+        <div style="display: none;">
+            <div id="connectionStatus"></div>
+            <div id="queueCount"></div>
+            <div id="queueList"></div>
+        </div>
+
+        <!-- Removed Link Container for Isolation -->
+    </div>
+
+    <script>
+        const queueList = document.getElementById('queueList');
+        const queueCountEl = document.getElementById('queueCount');
+        const resultCard = document.getElementById('resultCard');
+        const myQueueNumEl = document.getElementById('myQueueNum');
+        const queuesAheadEl = document.getElementById('queuesAhead');
+
+        let currentQueueData = [];
+        let isFirstLoad = true;
+
+        // Initialize Real-time Updates via SSE
+        function initRealtimeUpdates() {
+            const statusBadge = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+
+            const eventSource = new EventSource('/api/events');
+
+            eventSource.onopen = () => {
+                statusBadge.className = 'connection-badge status-live';
+                statusText.textContent = 'Live';
+            };
+
+            eventSource.onmessage = (event) => {
+                const result = JSON.parse(event.data);
+                if (result.success) {
+                    currentQueueData = result.queue;
+                    displayQueue(result.queue);
+                    queueCountEl.textContent = `${result.total} คิว`;
+
+                    // Re-check status if user previously searched (Update ONLY mode)
+                    const searchInput = document.getElementById('searchPhone').value.trim();
+                    if (searchInput) {
+                        updateSearchStatus(searchInput, true);
+                    }
+                }
+            };
+
+            eventSource.onerror = (err) => {
+                statusBadge.className = 'connection-badge status-error';
+                statusText.textContent = 'ขัดข้อง';
+                eventSource.close();
+                setTimeout(initRealtimeUpdates, 5000);
+            };
+        }
+
+        // Add CSS for connection status (reusing from dashboard)
+        const style = document.createElement('style');
+        style.textContent = `
+            .connection-badge { display: flex; align-items: center; gap: 6px; border-radius: 20px; font-weight: 600; }
+            .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+            .status-live { background: #dcfce7; color: #166534; }
+            .status-live .status-dot { background: #22c55e; animation: pulse-green 2s infinite; }
+            .status-connecting { background: #fef9c3; color: #854d0e; }
+            .status-connecting .status-dot { background: #eab308; }
+            .status-error { background: #fee2e2; color: #991b1b; }
+            .status-error .status-dot { background: #ef4444; }
+            @keyframes pulse-green {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+                70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Helper for channel badge
+        function getChannelStyle(channel) {
+            switch (channel) {
+                case 'Line': return 'background: #06c755; color: white;';
+                case 'Shopee': return 'background: #ee4d2d; color: white;';
+                case 'TikTok': return 'background: #000000; color: white;';
+                default: return 'background: #fecfef; color: #d63384;';
+            }
+        }
+
+        // Display Queue (Read-Only)
+        function displayQueue(queue) {
+            if (queue.length === 0) {
+                queueList.innerHTML = `
+                  <div class="empty-state">
+                    <div class="icon">📭</div>
+                    <p>ไม่มีคิวในขณะนี้</p>
+                  </div>`;
+                return;
+            }
+
+            queueList.innerHTML = queue.map((customer, index) => {
+                // Mask name: Show first 2 chars + ****
+                const maskedName = customer.name.length > 2
+                    ? customer.name.substring(0, 2) + '****'
+                    : customer.name + '****';
+
+                return `
+                <div class="queue-item">
+                  <div class="queue-item-container">
+                    <span class="queue-number">${index + 1}</span>
+                    <div class="queue-info">
+                      <h3>${maskedName} (xxx-${(customer.phone || '').slice(-4)})</h3>
+                      <div style="display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;">
+                          <span style="${getChannelStyle(customer.channel)} padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${customer.channel || ''}</span>
+                          <span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${customer.product || ''}</span>
+                      </div>
+                      <p>สถานะ: <strong>รอเรียกคิว</strong></p>
+                    </div>
+                  </div>
+                </div>
+            `}).join('');
+        }
+
+        // Check Queue Logic
+        async function checkQueue() {
+            const btn = document.querySelector('.search-section .btn');
+            const originalText = btn.innerHTML;
+            const phone = document.getElementById('searchPhone').value.trim();
+
+            if (!phone) {
+                alert('กรุณากรอกเบอร์โทรศัพท์');
+                return;
+            }
+
+            // Loading state
+            btn.disabled = true;
+            btn.innerHTML = '⌛ กำลังค้นหา...';
+
+            try {
+                // Logic updated to use currentQueueData from SSE
+                await updateSearchStatus(phone);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        let searchCache = null; // Store initial search result
+
+        async function updateSearchStatus(phone, isUpdateOnly = false) {
+            const foundDetails = document.getElementById('queueFoundDetails');
+            const notFoundMsg = document.getElementById('queueNotFound');
+
+            try {
+                // If it's an update from SSE, we only refresh positions if we already have records
+                if (isUpdateOnly && searchCache && searchCache.phone === phone) {
+                    // We don't need to fetch from server, just update the UI from what we have + new SSE data
+                    renderSearchResults();
+                    return;
+                }
+
+                // Call API if it's a new search or we need refreshed history
+                if (!isUpdateOnly || !searchCache || searchCache.phone !== phone) {
+                    const response = await fetch(`/api/check/${phone}`);
+                    const result = await response.json();
+
+                    if (result.success && result.customers.length > 0) {
+                        searchCache = { phone, customers: result.customers };
+                    } else {
+                        searchCache = null;
+                        resultCard.style.display = 'block';
+                        foundDetails.style.display = 'none';
+                        notFoundMsg.style.display = 'block';
+                        notFoundMsg.querySelector('p').textContent = `ไม่พบข้อมูลสำหรับเบอร์ ${phone}`;
+                        resultCard.classList.remove('highlight');
+                        return;
+                    }
+                }
+
+                renderSearchResults();
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        }
+
+        // Dedicated renderer for search results to keep logic clean
+        function renderSearchResults() {
+            if (!searchCache) return;
+
+            const foundDetails = document.getElementById('queueFoundDetails');
+            const notFoundMsg = document.getElementById('queueNotFound');
+
+            resultCard.style.display = 'block';
+            foundDetails.style.display = 'block';
+            notFoundMsg.style.display = 'none';
+            resultCard.classList.add('highlight');
+
+            foundDetails.innerHTML = `<h3 style="color: var(--text-primary);">พบข้อมูลทั้งหมด ${searchCache.customers.length} รายการ</h3>`;
+
+            searchCache.customers.forEach(customer => {
+                const card = document.createElement('div');
+                card.style.cssText = 'background: white; border-radius: 15px; padding: 20px; margin-bottom: 15px; border: 1px solid #eee; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.05);';
+
+                let statusHtml = '';
+
+                // CRITICAL: We must check status from currentQueueData first for the most accurate 'waiting' state
+                const activeRecord = currentQueueData.find(q => q.id === customer.id || q.firebaseId === customer.firebaseId);
+
+                if (activeRecord) {
+                    // Customer is currently in the active waiting queue
+                    const myIndex = currentQueueData.indexOf(activeRecord);
+                    
+                    let aheadInfo = '';
+                    if (myIndex > 0) {
+                        aheadInfo = `
+                            <div style="font-size: 1.1em;">
+                                อีก <strong class="text-pink-shimmer" style="font-size: 1.3em;">${myIndex}</strong> คิวจะถึงคุณ
+                            </div>
+                        `;
+                    } else {
+                        aheadInfo = `
+                            <div style="font-size: 1.1em; color: #10b981; font-weight: bold; animation: pulse-text 1.5s infinite;">
+                                ถึงคิวของคุณแล้ว!
+                            </div>
+                        `;
+                    }
+
+                    statusHtml = `
+                        <div style="text-align: center;">
+                            <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333;">${customer.product}</span>
+                            <span class="my-queue-number" style="margin: 5px 0;">คิวที่ ${myIndex + 1}</span>
+                            ${aheadInfo}
+                        </div>
+                    `;
+                } else if (customer.status === 'completed') {
+                    statusHtml = `
+                        <div style="text-align: center;">
+                            <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 5px;">${customer.product}</span>
+                            <strong style="color: #059669; font-size: 1.4em;">🎁 จุ่มแล้วเรียบร้อย! 🎁</strong>
+                            <p style="color: #666; font-size: 0.9em; margin-top: 5px;">เสร็จสิ้นเมื่อ: ${new Date(customer.completedAt).toLocaleString('th-TH')}</p>
+                        </div>
+                    `;
+                } else if (customer.status === 'skipped') {
+                    statusHtml = `
+                        <div style="text-align: center;">
+                            <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 5px;">${customer.product}</span>
+                            <strong style="color: #f59e0b; font-size: 1.4em;">⏭️ ข้ามแล้ว (ไม่อยู่ที่หน้าคิว)</strong>
+                            <p style="color: #666; font-size: 0.9em; margin-top: 5px;">ข้ามเมื่อ: ${customer.skippedAt ? new Date(customer.skippedAt).toLocaleString('th-TH') : '-'}</p>
+                            <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">* หากกลับมาแล้ว โปรดติดต่อแอดมิน</p>
+                        </div>
+                    `;
+                } else {
+                    // Customer was 'waiting' but not found in currentQueueData (likely just finished/skipped)
+                    statusHtml = `
+                        <div style="text-align: center;">
+                            <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333;">${customer.product}</span>
+                            <span class="my-queue-number" style="color: #999;">กำลังดำเนินการ</span>
+                            <p>กรุณารอการอัปเดตสถานะ หรือกดค้นหาใหม่</p>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = statusHtml;
+                foundDetails.appendChild(card);
+            });
+        }
+
+        // Initial load
+        initRealtimeUpdates();
+    </script>
+</body>
+
+</html>

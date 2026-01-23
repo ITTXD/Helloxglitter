@@ -1,0 +1,7 @@
+node_modules/
+credentials.json
+serviceAccountKey.json
+.env
+.DS_Store
+*.log
+.vercel

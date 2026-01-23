@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - จัดการคิวลูกค้า</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="badges.css">
+    <script src="theme.js" defer></script>
+    <style>
+        .connection-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-live {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-live .status-dot {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+            animation: pulse-green 2s infinite;
+        }
+
+        .status-connecting {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .status-connecting .status-dot {
+            background: #eab308;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-error .status-dot {
+            background: #ef4444;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        /* Channel Specific Backgrounds */
+        .queue-item.line-gradient {
+            background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+            border-left: 6px solid #22c55e;
+        }
+
+        .queue-item.shopee-gradient {
+            /* background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%); */
+            border-left: 6px solid #f97316;
+        }
+
+        .queue-item.tiktok-gradient {
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+            border-left: 6px solid #000000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container dashboard-container">
+        <h1 style="font-family: 'Great Vibes', cursive; font-size: 2.5em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxgliiter</h1>
+        <h1>📊 Dashboard - จัดการคิว</h1>
+        <p class="subtitle">ระบบจัดการคิวลูกค้าอัตโนมัติ</p>
+
+        <div class="queue-header">
+            <h2 style="margin: 0; color: #333;">รายการคิวทั้งหมด</h2>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div id="connectionStatus" class="connection-badge status-connecting">
+                    <span class="status-dot"></span>
+                    <span id="statusText">กำลังเชื่อมต่อ...</span>
+                </div>
+                <a href="/history.html" class="btn"
+                    style="text-decoration: none; width: auto; margin-top: 0; padding: 10px 25px; font-size: 1em; background: #FFD1DC; color: #D63384; border-radius: 30px; display: flex; align-items: center;">
+                    📜 ดูประวัติคิว
+                </a>
+                <span class="queue-count" id="queueCount">0 คิว</span>
+            </div>
+        </div>
+
+        <div id="queueList" class="queue-list">
+            <!-- Queue items will be inserted here -->
+        </div>
+
+        <div class="link-container">
+            <a href="/">🎫 ไปหน้าจองคิว</a>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 style="margin: 0; color: #333;">✏️ แก้ไขข้อมูลลูกค้า</h2>
+            </div>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editName">ชื่อ-นามสกุล</label>
+                    <input type="text" id="editName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editTracking">หมายเลข Order</label>
+                    <input type="text" id="editTracking" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPhone">เบอร์โทรศัพท์</label>
+                    <input type="tel" id="editPhone" required>
+                </div>
+                <div class="form-group">
+                    <label for="editProduct">สินค้า</label>
+                    <select id="editProduct" required
+                        style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
+                        <option value="3 กลต 6">3 กลต 6</option>
+                        <option value="12 กลต 21">12 กลต 21</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editNote">หมายเหตุ</label>
+                    <input type="text" id="editNote">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
+                    <button type="submit" class="btn">💾 บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        const queueList = document.getElementById('queueList');
+        const queueCountEl = document.getElementById('queueCount');
+        const notification = document.getElementById('notification');
+
+        // Show notification function
+        function showNotification(message, success = true) {
+            notification.textContent = message;
+            notification.style.background = success ? '#10b981' : '#ef4444';
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        let currentQueueData = []; // Store current state
+
+
+
+
+
+        // Helper for channel gradient classes
+        function getChannelClass(channel) {
+            switch (channel) {
+                case 'Line': return 'line-gradient';
+                case 'Shopee': return 'shopee-gradient';
+                case 'TikTok': return 'tiktok-gradient';
+                default: return '';
+            }
+        }
+
+        // Helper for channel badge styles
+        function getChannelStyle(channel) {
+            // Only return colors, padding/radius handled by class
+            switch (channel) {
+                case 'Line': return 'background: #06c755; color: white;';
+                case 'Shopee': return 'background: #ee4d2d; color: white;';
+                case 'TikTok': return 'background: #000000; color: white;';
+                default: return 'background: #fecfef; color: #d63384;';
+            }
+        }
+
+        // Display queue items
+        function displayQueue(queue) {
+            if (queue.length === 0) {
+                queueList.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>ไม่มีคิวในขณะนี้</p>
+          </div>
+        `;
+                return;
+            }
+
+            queueList.innerHTML = queue.map((customer, index) => `
+        <div class="queue-item ${getChannelClass(customer.channel)}" data-id="${customer.id}">
+          <div class="queue-item-container">
+            <span class="queue-number">${index + 1}</span>
+            <div class="queue-info">
+              <h3>${customer.name}</h3>
+              <div style="display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;">
+                  <span class="badge-channel" style="${getChannelStyle(customer.channel)}">${customer.channel || ''}</span>
+                  <span class="badge-product">${customer.product || ''}</span>
+                  ${customer.addon === 'เพิ่มไส้' ? '<span class="badge-addon">+เพิ่มไส้</span>' : ''}
+                  <span class="badge-admin">👤 ${customer.recordedBy || 'System'}</span>
+              </div>
+                  <p>🆔 Order No: ${customer.tracking || ''}</p>
+                  <p>📞 ${customer.phone}</p>
+                  ${customer.note ? `
+                <div class="queue-note">
+                    <strong class="note-label">📝 หมายเหตุ:</strong>
+                    <span class="note-content">${customer.note}</span>
+                </div>` : ''}
+                </div>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="btn-export" style="background: #ef4444; color: white; width: 100%; border: none; animation: none;" onclick="openEditModal(${customer.id})">
+                  ✏️ แก้ไข
+                </button>
+                <button class="btn-complete" style="background: #f59e0b; color: white;" onclick="skipQueue(${customer.id})">
+                  ⏭️ ข้าม (ไม่อยู่)
+                </button>
+                <button class="btn-complete" onclick="completeQueue(${customer.id})">
+                  ✅ เสร็จสิ้น
+                </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+        }
+
+        // Complete/Delete queue item
+        async function completeQueue(customerId) {
+            try {
+                const response = await fetch(`/api/queue/${customerId}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('✅ ' + result.message, true);
+
+                    // Remove item with animation
+                    const item = document.querySelector(`[data-id="${customerId}"]`);
+                    if (item) {
+                        item.style.transition = 'all 0.3s ease';
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateX(100px)';
+
+                        setTimeout(() => {
+                            // UI will update naturally via SSE
+                        }, 300);
+                    }
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                }
+            } catch (error) {
+                showNotification('❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', false);
+                console.error('Error:', error);
+            }
+        }
+
+        // Skip queue item (Not present)
+        async function skipQueue(customerId) {
+            if (!confirm('ยืนยันข้ามคิวนี้ (เนื่องจากไม่อยู่)?')) return;
+
+            try {
+                const response = await fetch(`/api/queue/${customerId}/skip`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('⏭️ ' + result.message, true);
+                    // UI will update naturally via SSE
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                }
+            } catch (error) {
+                showNotification('❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', false);
+                console.error('Error:', error);
+            }
+        }
+
+        // Initial load via SSE
+        function initRealtimeUpdates() {
+            const statusBadge = document.getElementById('connectionStatus');
+            const statusText = document.getElementById('statusText');
+
+            statusBadge.className = 'connection-badge status-connecting';
+            statusText.textContent = 'กำลังเชื่อมต่อ...';
+
+            const eventSource = new EventSource('/api/events');
+
+            eventSource.onopen = () => {
+                statusBadge.className = 'connection-badge status-live';
+                statusText.textContent = 'Live';
+            };
+
+            eventSource.onmessage = (event) => {
+                const result = JSON.parse(event.data);
+                if (result.success) {
+                    currentQueueData = result.queue;
+                    displayQueue(result.queue);
+                    queueCountEl.textContent = `${result.total} คิว`;
+                }
+            };
+
+            eventSource.onerror = (err) => {
+                console.error('EventSource failed:', err);
+                statusBadge.className = 'connection-badge status-error';
+                statusText.textContent = 'การเชื่อมต่อขัดข้อง - กำลังลองใหม่';
+                eventSource.close();
+                // Try to reconnect after 5 seconds
+                setTimeout(initRealtimeUpdates, 5000);
+            };
+        }
+
+        initRealtimeUpdates();
+
+        // Edit Functionality
+        const editModal = document.getElementById('editModal');
+        const editForm = document.getElementById('editForm');
+
+        function openEditModal(customerId) {
+            const customer = currentQueueData.find(q => q.id === customerId);
+            if (!customer) return;
+
+            document.getElementById('editId').value = customer.id;
+            document.getElementById('editName').value = customer.name;
+            document.getElementById('editTracking').value = customer.tracking || '';
+            document.getElementById('editPhone').value = customer.phone;
+            document.getElementById('editProduct').value = customer.product;
+            document.getElementById('editNote').value = customer.note || '';
+
+            editModal.style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            editModal.style.display = 'none';
+        }
+
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const updatedData = {
+                name: document.getElementById('editName').value,
+                tracking: document.getElementById('editTracking').value,
+                phone: document.getElementById('editPhone').value,
+                product: document.getElementById('editProduct').value,
+                note: document.getElementById('editNote').value
+            };
+
+            try {
+                const response = await fetch(`/api/queue/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification('✅ ' + result.message);
+                    closeEditModal();
+                    // UI will update automatically via SSE
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                }
+            } catch (error) {
+                showNotification('❌ เกิดข้อผิดพลาดในการบันทึก', false);
+            }
+        });
+
+        // Initial load handled by initRealtimeUpdates();
+    </script>
+</body>
+
+</html>

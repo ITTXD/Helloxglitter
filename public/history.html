@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ประวัติคิวที่เสร็จสิ้น</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="theme.js" defer></script>
+    <style>
+        .completed-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .time-badge {
+            font-size: 0.8em;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        .skipped-item {
+            background: #f8fafc !important;
+            opacity: 0.7;
+            filter: grayscale(0.5);
+            border: 2px dashed #cbd5e1 !important;
+        }
+
+        .skipped-number {
+            background: #94a3b8 !important;
+            color: white !important;
+        }
+    </style>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <div class="container dashboard-container">
+        <h1>📜 ประวัติคิวที่เสร็จสิ้น</h1>
+        <p class="subtitle">รายการลูกค้าที่รับบริการเรียบร้อยแล้ว</p>
+
+        <div class="queue-header">
+            <h2 style="margin: 0; color: #333;">ประวัติคิวทั้งหมด</h2>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button onclick="fetchHistory(true)" class="btn"
+                    style="width: auto; margin-top: 0; padding: 10px 20px; font-size: 0.9em; background: #10b981; color: white;">
+                    🔄 รีเฟรช
+                </button>
+                <button onclick="exportToExcel()" class="btn"
+                    style="width: auto; margin-top: 0; padding: 10px 20px; font-size: 0.9em; background: #6366f1; color: white;">
+                    📥 Export Excel
+                </button>
+                <button onclick="clearAllHistory()" class="btn"
+                    style="width: auto; margin-top: 0; padding: 10px 20px; font-size: 0.9em; background: #ef4444; color: white;">
+                    🗑️ ล้างทั้งหมด
+                </button>
+                <span class="queue-count" id="historyCount">0 รายการ</span>
+            </div>
+        </div>
+
+        <div id="historyList" class="queue-list">
+            <!-- Items will be inserted here -->
+        </div>
+
+        <div id="loadMoreContainer" style="text-align: center; margin-top: 20px; display: none;">
+            <button id="loadMoreBtn" onclick="fetchHistory(false)" class="btn"
+                style="width: auto; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 10px 30px;">
+                ดูเพิ่มเติม...
+            </button>
+        </div>
+
+        <div class="link-container">
+            <a href="/dashboard.html">📊 กลับหน้า Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="notification"></div>
+
+    <script>
+        const historyList = document.getElementById('historyList');
+        const historyCountEl = document.getElementById('historyCount');
+        const notification = document.getElementById('notification');
+        const loadMoreContainer = document.getElementById('loadMoreContainer');
+        const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+        function showNotification(message, success = true) {
+            notification.textContent = message;
+            notification.style.background = success ? '#10b981' : '#ef4444';
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        let currentHistoryData = [];
+        let lastFirebaseId = null;
+        const LIMIT = 20;
+
+        async function fetchHistory(reset = true) {
+            try {
+                if (reset) {
+                    currentHistoryData = [];
+                    lastFirebaseId = null;
+                    historyList.innerHTML = '<p style="text-align:center; padding: 20px;">กำลังโหลด...</p>';
+                }
+
+                let url = `/api/history?limit=${LIMIT}`;
+                if (lastFirebaseId) url += `&after=${lastFirebaseId}`;
+
+                const response = await fetch(url);
+                const result = await response.json();
+
+                if (result.success) {
+                    if (reset) {
+                        currentHistoryData = result.queue;
+                        historyList.innerHTML = ''; // Clear loading text
+                    } else {
+                        currentHistoryData = [...currentHistoryData, ...result.queue];
+                    }
+
+                    displayHistory(result.queue, reset);
+
+                    const totalLoaded = currentHistoryData.length;
+                    historyCountEl.textContent = `${totalLoaded} รายการ`;
+
+                    // Update last ID for next pagination
+                    if (result.queue.length > 0) {
+                        lastFirebaseId = result.queue[result.queue.length - 1].firebaseId;
+                    }
+
+                    // Show/hide load more button
+                    loadMoreContainer.style.display = result.hasMore ? 'block' : 'none';
+
+                    if (reset && result.queue.length === 0) {
+                        historyList.innerHTML = `
+                          <div class="empty-state">
+                            <div class="icon">📜</div>
+                            <p>ยังไม่มีประวัติคิวที่เสร็จสิ้น</p>
+                          </div>`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching history:', error);
+                showNotification('❌ เกิดข้อผิดพลาดในการดึงข้อมูล', false);
+            }
+        }
+
+        function getChannelStyle(channel) {
+            switch (channel) {
+                case 'Line': return 'background: #06c755; color: white;';
+                case 'Shopee': return 'background: #ee4d2d; color: white;';
+                case 'TikTok': return 'background: #000000; color: white;';
+                default: return 'background: #fecfef; color: #d63384;';
+            }
+        }
+
+        function displayHistory(newItems, reset) {
+            // Calculate starting sequential number for completed items
+            let completedCounter = 0;
+            if (!reset) {
+                const previousItems = currentHistoryData.slice(0, currentHistoryData.length - newItems.length);
+                completedCounter = previousItems.filter(c => c.status !== 'skipped').length;
+            }
+
+            const html = newItems.map((customer) => {
+                const isSkipped = customer.status === 'skipped';
+                const completedDate = isSkipped ? null : (customer.completedAt ? new Date(customer.completedAt) : null);
+                const timeStr = completedDate ? completedDate.toLocaleString('th-TH') : '-';
+
+                let displayNumber = '-';
+                if (!isSkipped) {
+                    completedCounter++;
+                    displayNumber = completedCounter;
+                }
+
+                return `
+                <div class="queue-item ${isSkipped ? 'skipped-item' : ''}">
+                  <div class="queue-item-container">
+                    <span class="queue-number ${isSkipped ? 'skipped-number' : ''}">${isSkipped ? 'ข้าม' : displayNumber}</span>
+                    <div class="queue-info">
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <h3>${customer.name}</h3>
+                        ${isSkipped
+                        ? '<span class="completed-badge" style="background: #e2e8f0; color: #475569;">⏭️ ไม่อยู่</span>'
+                        : '<span class="completed-badge">✅ เสร็จสิ้น</span>'}
+                      </div>
+                      <div style="display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;">
+                          <span style="${getChannelStyle(customer.channel)} padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${customer.channel || ''}</span>
+                          <span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${customer.product || ''}</span>
+                          ${customer.addon === 'เพิ่มไส้' ? '<span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">+เพิ่มไส้</span>' : ''}
+                          <span style="background: #f8fafc; color: #64748b; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; border: 1px solid #e2e8f0;">👤 ${customer.recordedBy || 'System'}</span>
+                      </div>
+                      <p>🆔 Order No: ${customer.tracking || ''}</p>
+                      ${customer.note ? `<p style="color: #6366f1; font-size: 0.9em; margin-top: 5px; background: #eef2ff; padding: 5px 10px; border-radius: 8px;">📝 ${customer.note}</p>` : ''}
+                      <p class="time-badge">🕒 ${isSkipped ? 'ข้ามเมื่อ: ' + (customer.skippedAt ? new Date(customer.skippedAt).toLocaleString('th-TH') : '-') : 'เสร็จเมื่อ: ' + timeStr}</p>
+                    </div>
+                    </div>
+                  </div>
+                </div>
+            `}).join('');
+
+            if (reset) {
+                historyList.innerHTML = html;
+            } else {
+                historyList.insertAdjacentHTML('beforeend', html);
+            }
+        }
+
+        async function exportToExcel() {
+            if (currentHistoryData.length === 0) {
+                showNotification('❌ ไม่มีข้อมูลในรายการที่โหลดปัจจุบัน', false);
+                return;
+            }
+
+            showNotification('⏳ กำลังเตรียมไฟล์ Excel...');
+
+            let completedCounter = 0;
+            const data = currentHistoryData.map((c) => {
+                const isSkipped = c.status === 'skipped';
+                let orderNum = '-';
+                if (!isSkipped) {
+                    completedCounter++;
+                    orderNum = completedCounter;
+                }
+
+                return {
+                    'ลำดับ': orderNum,
+                    'ชื่อ-นามสกุล': c.name,
+                    'หมายเลข Order': c.tracking,
+                    'เบอร์โทร': c.phone,
+                    'ช่องทาง': c.channel,
+                    'สินค้า': c.product,
+                    'ตัวเลือกเสริม': c.addon,
+                    'หมายเหตุ': c.note || '',
+                    'ราคาเพิ่ม': c.price,
+                    'เวลาจอง': new Date(c.timestamp).toLocaleString('th-TH'),
+                    'สถานะ': isSkipped ? 'ไม่อยู่' : 'เสร็จสิ้น',
+                    'เวลาดำเนินการ': isSkipped
+                        ? (c.skippedAt ? new Date(c.skippedAt).toLocaleString('th-TH') : '-')
+                        : (c.completedAt ? new Date(c.completedAt).toLocaleString('th-TH') : '-')
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "HistoryRecords");
+            XLSX.writeFile(wb, `Queue_History_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showNotification('✅ Export สำเร็จ!');
+        }
+
+        async function clearAllHistory() {
+            if (!confirm('⚠️ คุณแน่ใจหรือไม่ว่าต้องการ "ล้างประวัติทีละ 500 รายการ"?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/history', { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('🗑️ ' + result.message);
+                    fetchHistory(true);
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                }
+            } catch (error) {
+                showNotification('❌ เกิดข้อผิดพลาดในการล้างประวัติ', false);
+            }
+        }
+
+        // Initial load
+        fetchHistory(true);
+    </script>
+</body>
+
+</html>
