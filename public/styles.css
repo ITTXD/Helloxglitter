@@ -6,9 +6,9 @@
     --btn-padding: 12px;
     --border-radius: 12px;
 
-    /* Light Theme Colors (Pink/Peach) */
-    --bg-gradient: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
-    --container-bg: rgba(255, 255, 255, 0.95);
+    /* Light Theme Colors (Pink/Peach) - Adjusted for better mobile visibility */
+    --bg-gradient: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+    --container-bg: rgba(255, 255, 255, 0.85);
     --text-primary: #2d3436;
     --text-secondary: #636e72;
     --input-bg: #f8f9fa;
@@ -25,66 +25,15 @@
     --admin-select-text: #6366f1;
 }
 
-[data-theme="dark"] {
-    /* Dark Theme Colors (Cyber Neon) */
-    --bg-gradient: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-    --container-bg: rgba(20, 20, 30, 0.9);
-    --text-primary: #f0f0f0;
-    --text-secondary: #b0b0b0;
-    --input-bg: #1a1a2e;
-    --input-border: #404060;
-    --accent-color: #ff0055;
-    --accent-gradient: linear-gradient(135deg, #ff0055 0%, #ff00cc 100%);
-    --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-    --hover-shadow: 0 10px 25px rgba(255, 0, 85, 0.4);
-    --result-card-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    --result-card-border: #404060;
-    --modal-bg: #1a1a2e;
-    --admin-select-bg: rgba(30, 30, 40, 0.8);
-    --admin-select-border: #404060;
-    --admin-select-text: #a0a0ff;
-}
-
-[data-theme="dark"] .admin-select-compact select {
-    color: var(--admin-select-text);
-    border-color: var(--admin-select-border);
-}
-
-[data-theme="dark"] .admin-select-compact {
-    border-color: var(--admin-select-border);
-}
-
-/* Theme Toggle Button */
-.theme-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--container-bg);
-    border: 2px solid var(--accent-color);
-    color: var(--text-primary);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 1.5em;
-    cursor: pointer;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    z-index: 9999;
-    transition: all 0.3s ease;
-}
-
-.theme-toggle:hover {
-    transform: scale(1.1);
-    box-shadow: 0 0 15px var(--accent-color);
-}
-
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Apply transitions only to interactive elements */
+button, input, a, .queue-item, .connection-badge {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
 }
 
 @keyframes sparkle-move {
@@ -103,10 +52,16 @@
     }
 }
 
+html {
+    min-height: 100%;
+    background-color: #ff9a9e; /* Fallback pink color */
+}
+
 body {
     font-family: 'Prompt', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: var(--bg-gradient);
+    /* Background moved to ::before for better mobile fixed support */
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -115,6 +70,9 @@ body {
     position: relative;
 }
 
+/* Removed media query for background-attachment as we use fixed pseudo-element now */
+
+/* Default background (Glitter) for most pages */
 body::before {
     content: "";
     position: fixed;
@@ -123,15 +81,24 @@ body::before {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    background-image: 
-        radial-gradient(rgba(255, 255, 255, 0.8) 1px, transparent 1px),
-        radial-gradient(rgba(255, 255, 255, 0.6) 1px, transparent 1px);
-    background-size: 60px 60px, 40px 40px;
-    background-position: 0 0, 30px 30px;
-    opacity: 0.3;
-    z-index: -1;
-    animation: bg-sparkle 10s linear infinite;
+    background: url('/Background/glitter2.jpg') no-repeat center center;
+    background-size: cover;
+    filter: none;
+    opacity: 1;
+    z-index: -2;
 }
+
+/* Override for pages that should NOT have glitter (like customer.html) */
+body.no-glitter::before {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-gradient);
+    filter: none;
+}
+
+
 
 .container {
     background: var(--container-bg);
@@ -174,7 +141,7 @@ h1 {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     background-size: 200% auto;
-    animation: shimmer 3s linear infinite;
+    /* animation: shimmer 3s linear infinite; */
 }
 
 .subtitle {
@@ -386,6 +353,27 @@ select:focus {
     box-shadow: var(--hover-shadow);
 }
 
+.btn-restore {
+    padding: 6px 12px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    margin-left: 5px;
+}
+
+.btn-restore:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
 /* Link Container */
 .link-container {
     text-align: center;
@@ -423,6 +411,14 @@ select:focus {
     font-size: 1.4em;
 }
 
+/* Action Buttons Container */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 150px;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .container {
@@ -433,6 +429,10 @@ select:focus {
         font-size: 1.8em;
     }
 
+    .queue-item {
+        padding: 20px 15px; /* Slightly reduced padding */
+    }
+
     .queue-item-container {
         flex-direction: column;
         align-items: flex-start;
@@ -440,12 +440,39 @@ select:focus {
 
     .queue-number {
         margin-bottom: 10px;
+        align-self: flex-start;
+        /* Make number look like a tag on top */
+        border-radius: 8px;
+        padding: 5px 12px;
+        width: auto;
+        height: auto;
     }
 
-    .btn-complete {
+    .queue-info {
         width: 100%;
-        margin-top: 10px;
     }
+
+    .action-buttons {
+        flex-direction: row;
+        width: 100%;
+        margin-top: 15px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .action-buttons button {
+        flex: 1;
+        min-width: 30%; /* Ensure 3 buttons fit or wrap nicely */
+        margin-top: 0 !important; /* Override specific margins if any */
+        font-size: 0.9em;
+        padding: 10px 5px;
+        justify-content: center;
+    }
+    
+    /* Make the Complete button (usually last) full width if it wraps alone? 
+       Actually with flex:1 it will fill space. 
+       If 3 buttons: 33% each roughly.
+    */
 }
 
 /* Utility Classes */
@@ -455,7 +482,7 @@ select:focus {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     background-size: 200% auto;
-    animation: shimmer 3s linear infinite;
+    /* animation: shimmer 3s linear infinite; */
 }
 
 /* Modal Styles */
@@ -639,32 +666,4 @@ select:focus {
 .note-content {
     color: #1E1B4B;
     font-weight: 500;
-}
-
-/* Dark Mode Overrides for Queue Item Specifics */
-[data-theme="dark"] .queue-item {
-    background: #000000; /* Pure Black Request */
-    border-color: #333;
-}
-
-[data-theme="dark"] .queue-note {
-    background: #111; /* Very dark gray to contrast slightly with black */
-    border-left-color: var(--accent-color);
-}
-
-[data-theme="dark"] .note-label {
-    color: var(--accent-color);
-}
-
-[data-theme="dark"] .note-content {
-    color: #e0e0e0; /* Beautiful gray/white text */
-}
-
-/* Ensure text in queue item is visible in dark mode */
-[data-theme="dark"] .queue-info h3 {
-    color: #ffffff;
-}
-
-[data-theme="dark"] .queue-info p {
-    color: #b0b0b0; /* Beautiful gray */
 }

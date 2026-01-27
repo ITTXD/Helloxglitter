@@ -8,9 +8,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="badges.css">
-    <script src="theme.js" defer></script>
+    <link rel="stylesheet" href="styles.css?v=16">
+    <link rel="stylesheet" href="badges.css?v=8">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="firebase-config.js"></script>
     <style>
         .connection-badge {
             display: flex;
@@ -82,7 +85,6 @@
         }
 
         .queue-item.shopee-gradient {
-            /* background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%); */
             border-left: 6px solid #f97316;
         }
 
@@ -90,37 +92,223 @@
             background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
             border-left: 6px solid #000000;
         }
+
+        /* Layout Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+
+        /* Desktop Layout with Independent Scrolling */
+        @media (min-width: 1024px) {
+            .dashboard-container {
+                height: calc(100vh - 40px); /* Fit viewport exactly minus body padding */
+                display: flex;
+                flex-direction: column;
+                padding-bottom: 0; /* No extra padding needed inside */
+                overflow: hidden; /* Prevent container scroll */
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr 1fr;
+                align-items: stretch; /* Stretch to fill height */
+                gap: 20px;
+                flex: 1; /* Fill remaining vertical space */
+                min-height: 0; /* Allow grid to shrink if needed */
+                display: grid;
+            }
+
+            .queue-section, .history-section {
+                height: 100%; /* Fill grid cell */
+                display: flex;
+                flex-direction: column;
+                background: rgba(255, 255, 255, 0.4);
+                border-radius: 16px;
+                padding: 15px;
+                box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.5);
+                border: 1px solid rgba(255, 255, 255, 0.6);
+                overflow: hidden; /* Contain children */
+            }
+
+            .queue-header {
+                flex-shrink: 0;
+            }
+
+            .queue-list {
+                flex: 1; /* Fill remaining space */
+                padding-right: 12px;
+                overflow-y: auto; /* Scroll internally */
+                scrollbar-gutter: stable;
+            }
+
+            #loadMoreContainer {
+                flex-shrink: 0;
+                padding-top: 10px;
+            }
+        }
+
+        /* Mobile Layout Scrolling */
+        @media (max-width: 1023px) {
+            .queue-list {
+                max-height: 60vh;
+                overflow-y: auto;
+                padding: 5px;
+                border: 1px solid rgba(0,0,0,0.05);
+                border-radius: 10px;
+            }
+        }
+
+        /* Custom Scrollbar Styling */
+        .queue-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .queue-list::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+        }
+        .queue-list::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+        .queue-list::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* History Styles */
+        .completed-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            background: #dcfce7;
+            color: #166534;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .time-badge {
+            font-size: 0.8em;
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+        .skipped-item {
+            background: #ffebee !important;
+            opacity: 1;
+            filter: none;
+            border: 2px solid #ef4444 !important;
+        }
+
+        .completed-item {
+            background: #f0fdf4 !important;
+            border: 2px solid #22c55e !important;
+        }
+
+        .skipped-number {
+            background: #ef4444 !important;
+            color: white !important;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #333;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .history-controls {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.85em;
+            border-radius: 15px;
+        }
     </style>
 </head>
 
 <body>
-    <div class="container dashboard-container">
-        <h1 style="font-family: 'Great Vibes', cursive; font-size: 2.5em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxgliiter</h1>
+    <div class="container dashboard-container" style="max-width: 1400px;">
+        <h1 style="font-family: 'Great Vibes', cursive; font-size: 2.5em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxglitter</h1>
         <h1>📊 Dashboard - จัดการคิว</h1>
         <p class="subtitle">ระบบจัดการคิวลูกค้าอัตโนมัติ</p>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="/" style="color: #2563eb; text-decoration: none; font-weight: 600; font-size: 1.1em; padding: 10px 20px; background: rgba(255,255,255,0.5); border-radius: 20px;">🎫 ไปหน้าจองคิว</a>
+        </div>
 
-        <div class="queue-header">
-            <h2 style="margin: 0; color: #333;">รายการคิวทั้งหมด</h2>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <div id="connectionStatus" class="connection-badge status-connecting">
-                    <span class="status-dot"></span>
-                    <span id="statusText">กำลังเชื่อมต่อ...</span>
+        <div class="dashboard-grid">
+            <!-- Left Column: Current Queue -->
+            <div class="queue-section">
+                <div class="queue-header" style="margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <h2 class="section-title">⏳ รายการคิวรอ</h2>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <div id="connectionStatus" class="connection-badge status-connecting">
+                                <span class="status-dot"></span>
+                                <span id="statusText">...</span>
+                            </div>
+                            <span class="queue-count" id="queueCount">0 คิว</span>
+                        </div>
+                    </div>
+                    <!-- Queue Search -->
+                    <div style="margin-top: 15px;">
+                        <input type="text" id="queueSearch" placeholder="🔍 ค้นหาชื่อ, เบอร์โทร หรือ Order No." 
+                            style="padding: 10px; border-radius: 20px; border: 1px solid #e2e8f0; width: 100%; font-size: 0.9em;">
+                    </div>
                 </div>
-                <a href="/history.html" class="btn"
-                    style="text-decoration: none; width: auto; margin-top: 0; padding: 10px 25px; font-size: 1em; background: #FFD1DC; color: #D63384; border-radius: 30px; display: flex; align-items: center;">
-                    📜 ดูประวัติคิว
-                </a>
-                <span class="queue-count" id="queueCount">0 คิว</span>
+
+                <div id="queueList" class="queue-list" style="max-height: 60vh; overflow-y: auto; padding-right: 6px;">
+                    <!-- Queue items will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Right Column: History -->
+            <div class="history-section">
+                <div class="queue-header" style="margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 15px; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 10px;">
+                        <h2 class="section-title">📜 ประวัติเสร็จสิ้น</h2>
+                        <div class="history-controls" style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+                                <button onclick="initHistory()" class="btn btn-small" style="background: #10b981; color: white; width: auto; margin: 0;">
+                                    🔄 รีเฟรช
+                                </button>
+                                <button onclick="exportToExcel()" class="btn btn-small" style="background: #6366f1; color: white; width: auto; margin: 0;">
+                                    📥 Excel
+                                </button>
+                                <button onclick="clearAllHistory()" class="btn btn-small" style="background: #ef4444; color: white; width: auto; margin: 0;">
+                                    🗑️ ล้าง
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 10px; text-align: right; font-size: 0.9em; color: #64748b;">
+                        จำนวนทั้งหมด: <span id="historyCount">0</span> รายการ
+                    </div>
+                    <!-- History Search -->
+                    <div style="margin-top: 15px;">
+                        <input type="text" id="historySearch" placeholder="🔍 ค้นหาประวัติ (ชื่อ, เบอร์, Order)..." 
+                            style="padding: 10px; border-radius: 20px; border: 1px solid #e2e8f0; width: 100%; font-size: 0.9em;">
+                    </div>
+                </div>
+
+                <div id="historyList" class="queue-list">
+                    <!-- History items will be inserted here -->
+                </div>
+
+                <div id="loadMoreContainer" style="text-align: center; margin-top: 20px; display: none;">
+                    <button id="loadMoreBtn" onclick="loadMoreLocal()" class="btn"
+                        style="width: auto; background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 10px 30px;">
+                        ดูเพิ่มเติม...
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div id="queueList" class="queue-list">
-            <!-- Queue items will be inserted here -->
-        </div>
-
-        <div class="link-container">
-            <a href="/">🎫 ไปหน้าจองคิว</a>
-        </div>
     </div>
 
     <!-- Edit Modal -->
@@ -133,23 +321,31 @@
                 <input type="hidden" id="editId">
                 <div class="form-group">
                     <label for="editName">ชื่อ-นามสกุล</label>
-                    <input type="text" id="editName" required>
+                    <input type="text" id="editName">
                 </div>
                 <div class="form-group">
                     <label for="editTracking">หมายเลข Order</label>
-                    <input type="text" id="editTracking" required>
+                    <input type="text" id="editTracking">
                 </div>
                 <div class="form-group">
                     <label for="editPhone">เบอร์โทรศัพท์</label>
-                    <input type="tel" id="editPhone" required>
+                    <input type="tel" id="editPhone">
                 </div>
                 <div class="form-group">
                     <label for="editProduct">สินค้า</label>
-                    <select id="editProduct" required
+                    <select id="editProduct"
                         style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
-                        <option value="3 กลต 6">3 กลต 6</option>
-                        <option value="12 กลต 21">12 กลต 21</option>
+                        <option value="3 กรต 6">3 กรต 6</option>
+                        <option value="6 กรต 12">6 กรต 12</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label>ตัวเลือกเพิ่มเติม</label>
+                    <div style="display: flex; gap: 15px; margin-top: 5px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="editAddon" style="transform: scale(1.2);"> เพิ่มไส้
+                        </label>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="editNote">หมายเหตุ</label>
@@ -169,6 +365,24 @@
         const queueList = document.getElementById('queueList');
         const queueCountEl = document.getElementById('queueCount');
         const notification = document.getElementById('notification');
+        
+        // History Elements
+        const historyList = document.getElementById('historyList');
+        const historyCountEl = document.getElementById('historyCount');
+        const loadMoreContainer = document.getElementById('loadMoreContainer');
+        const historySearch = document.getElementById('historySearch');
+
+        // History Search Logic (client-side, instant)
+        let searchTimeout;
+        historySearch.addEventListener('input', (e) => { 
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            searchTimeout = setTimeout(() => {
+                lastSearchQuery = query;
+                const data = getFilteredData();
+                renderHistoryList(data, true);
+            }, 200);
+        });
 
         // Show notification function
         function showNotification(message, success = true) {
@@ -181,11 +395,12 @@
             }, 3000);
         }
 
-        let currentQueueData = []; // Store current state
-
-
-
-
+        let currentQueueData = []; 
+        let currentHistoryData = [];
+        let masterHistoryData = [];
+        let lastSearchQuery = '';
+        let lastFirebaseId = null;
+        const LIMIT = 20;
 
         // Helper for channel gradient classes
         function getChannelClass(channel) {
@@ -220,16 +435,21 @@
                 return;
             }
 
-            queueList.innerHTML = queue.map((customer, index) => `
+            queueList.innerHTML = queue.map((customer, index) => {
+                // Use the persistent ID as queue number instead of array index
+                // Assuming customer.id is the sequential queue number from database
+                const queueNumber = customer.id;
+                
+                return `
         <div class="queue-item ${getChannelClass(customer.channel)}" data-id="${customer.id}">
           <div class="queue-item-container">
-            <span class="queue-number">${index + 1}</span>
+            <span class="queue-number">${queueNumber}</span>
             <div class="queue-info">
               <h3>${customer.name}</h3>
               <div style="display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;">
                   <span class="badge-channel" style="${getChannelStyle(customer.channel)}">${customer.channel || ''}</span>
                   <span class="badge-product">${customer.product || ''}</span>
-                  ${customer.addon === 'เพิ่มไส้' ? '<span class="badge-addon">+เพิ่มไส้</span>' : ''}
+                  ${(customer.addon || '').includes('เพิ่มไส้') ? `<span class="badge-addon">+เพิ่มไส้ ${customer.product === '3 กรต 6' ? '+50฿' : '+100฿'}</span>` : ''}
                   <span class="badge-admin">👤 ${customer.recordedBy || 'System'}</span>
               </div>
                   <p>🆔 Order No: ${customer.tracking || ''}</p>
@@ -240,10 +460,8 @@
                     <span class="note-content">${customer.note}</span>
                 </div>` : ''}
                 </div>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="btn-export" style="background: #ef4444; color: white; width: 100%; border: none; animation: none;" onclick="openEditModal(${customer.id})">
-                  ✏️ แก้ไข
-                </button>
+            <div class="action-buttons">
+                <button class="btn-export" style="background: #ef4444; color: white; border: none; animation: none;" onclick="openEditModal(${customer.id})">✏️ แก้ไข</button>
                 <button class="btn-complete" style="background: #f59e0b; color: white;" onclick="skipQueue(${customer.id})">
                   ⏭️ ข้าม (ไม่อยู่)
                 </button>
@@ -253,8 +471,248 @@
             </div>
           </div>
         </div>
-      `).join('');
+      `;
+            }).join('');
         }
+
+        // --- HISTORY FUNCTIONS ---
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function highlightText(text, query) {
+            const safe = escapeHtml(text || '');
+            if (!query) return safe;
+            const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedQuery, 'gi');
+            return safe.replace(regex, (m) => `<span style="background:#fff3cd; color:#7c2d12; border-radius:3px; padding:0 2px;">${m}</span>`);
+        }
+
+        function getFilteredData() {
+            const q = (lastSearchQuery || '').toLowerCase();
+            if (!q) return masterHistoryData;
+            return masterHistoryData.filter(item => 
+                (item.name || '').toLowerCase().includes(q) ||
+                (item.phone || '').toLowerCase().includes(q) ||
+                (item.tracking || '').toLowerCase().includes(q)
+            );
+        }
+
+        async function initHistory() {
+            try {
+                currentHistoryData = [];
+                lastFirebaseId = null;
+                historyList.innerHTML = '<p style="text-align:center; padding: 20px;">กำลังโหลด...</p>';
+                const response = await fetch(`/api/history?limit=1000`);
+                const result = await response.json();
+
+                if (result.success) {
+                    // API returns Newest First. 
+                    // To show Chronological Order (Oldest -> Newest) so numbers increment at the bottom,
+                    // we need to reverse the entire dataset initially.
+                    masterHistoryData = (result.queue || []).reverse();
+                    lastSearchQuery = '';
+                    renderHistoryList(masterHistoryData, true);
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                }
+            } catch (error) {
+                console.error('Error initializing history:', error);
+                showNotification('❌ เกิดข้อผิดพลาดในการดึงข้อมูลประวัติ', false);
+            }
+        }
+
+        function renderHistoryList(fullData, reset = true) {
+            const data = Array.isArray(fullData) ? fullData : [];
+            if (reset) {
+                currentHistoryData = [];
+                historyList.innerHTML = '';
+            }
+            const start = currentHistoryData.length;
+            const nextBatch = data.slice(start, start + LIMIT);
+            if (nextBatch.length === 0 && start === 0) {
+                historyList.innerHTML = `
+                  <div class="empty-state">
+                    <div class="icon">📜</div>
+                    <p>ยังไม่มีประวัติคิวที่เสร็จสิ้น</p>
+                  </div>`;
+            } else {
+                currentHistoryData = [...currentHistoryData, ...nextBatch];
+                displayHistory(nextBatch, false);
+            }
+            historyCountEl.textContent = `${data.length}`;
+            loadMoreContainer.style.display = currentHistoryData.length < data.length ? 'block' : 'none';
+        }
+
+        function loadMoreLocal() {
+            const data = getFilteredData();
+            renderHistoryList(data, false);
+        }
+
+        async function fetchHistory(reset = true, searchQuery = null) {
+            if (reset) {
+                await initHistory();
+                return;
+            }
+            if (typeof searchQuery === 'string') {
+                lastSearchQuery = searchQuery;
+            }
+            const data = getFilteredData();
+            renderHistoryList(data, true);
+        }
+
+        function displayHistory(newItems, reset) {
+            let completedCounter = 0;
+            if (!reset) {
+                // If appending, we need to know the count of existing items
+                completedCounter = historyList.children.length;
+            }
+
+            // newItems are already in correct order (sliced from masterHistoryData which is Oldest->Newest)
+            // No need to reverse here anymore.
+            
+            const html = newItems.map((customer) => {
+                const isSkipped = customer.status === 'skipped';
+                const completedDate = isSkipped ? null : (customer.completedAt ? new Date(customer.completedAt) : null);
+                const timeStr = completedDate ? completedDate.toLocaleString('th-TH') : '-';
+                
+                completedCounter++;
+                const displayNumber = completedCounter;
+
+                return `
+                <div class="queue-item history-item ${isSkipped ? 'skipped-item' : 'completed-item'}">
+                  <div class="queue-item-container">
+                    <span class="queue-number ${isSkipped ? 'skipped-number' : ''}">${displayNumber}</span>
+                    <div class="queue-info">
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <h3>${highlightText(customer.name || '', lastSearchQuery)}</h3>
+                        ${isSkipped
+                        ? '<span class="completed-badge" style="background: #fee2e2; color: #991b1b;">⏭️ ไม่อยู่</span>'
+                        : '<span class="completed-badge" style="background: #dcfce7; color: #166534;">✅ เสร็จสิ้น</span>'}
+                      </div>
+                      <div style="display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;">
+                          <span style="${getChannelStyle(customer.channel)} padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${customer.channel || ''}</span>
+                          <span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${customer.product || ''}</span>
+                          ${(customer.addon || '').includes('เพิ่มไส้') ? `<span style="background: #fce7f3; color: #9d174d; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">+เพิ่มไส้ ${customer.product === '3 กรต 6' ? '+50฿' : '+100฿'}</span>` : ''}
+                          <span style="background: #f8fafc; color: #64748b; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; border: 1px solid #e2e8f0;">👤 ${customer.recordedBy || 'System'}</span>
+                      </div>
+                      <p>🆔 Order No: ${highlightText(customer.tracking || '', lastSearchQuery)}</p>
+                      ${customer.note ? `<p style="color: #6366f1; font-size: 0.9em; margin-top: 5px; background: #eef2ff; padding: 5px 10px; border-radius: 8px;">📝 ${customer.note}</p>` : ''}
+                      <p class="time-badge">🕒 ${isSkipped ? 'ข้ามเมื่อ: ' + (customer.skippedAt ? new Date(customer.skippedAt).toLocaleString('th-TH') : '-') : 'เสร็จเมื่อ: ' + timeStr}</p>
+                    </div>
+                    <div class="action-buttons" style="margin-left: auto; display: flex; align-items: center;">
+                        <button class="btn-export" style="background: #ef4444; color: white; border: none; animation: none;" onclick="openEditModal(${customer.id})">✏️ แก้ไข</button>
+                        ${isSkipped ? `<button class="btn-restore" onclick="restoreQueue(${customer.id})">🔙 กลับมาแล้ว</button>` : ''}
+                    </div>
+                  </div>
+                </div>
+            `}).join('');
+
+            if (reset) {
+                historyList.innerHTML = html;
+            } else {
+                historyList.insertAdjacentHTML('beforeend', html);
+            }
+        }
+
+        function updateHistoryItemDOM(id, data) {
+            const item = document.querySelector(`.history-item [onclick*="openEditModal(${id})"]`)?.closest('.history-item');
+            if (!item) return;
+
+            const infoDiv = item.querySelector('.queue-info');
+            if (infoDiv) {
+                const isSkipped = data.status === 'skipped';
+                const completedDate = isSkipped ? null : (data.completedAt ? new Date(data.completedAt) : null);
+                const timeStr = completedDate ? completedDate.toLocaleString('th-TH') : '-';
+                
+                infoDiv.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <h3>${highlightText(data.name || '', lastSearchQuery)}</h3>
+                        ${isSkipped
+                        ? '<span class="completed-badge" style="background: #fee2e2; color: #991b1b;">⏭️ ไม่อยู่</span>'
+                        : '<span class="completed-badge" style="background: #dcfce7; color: #166534;">✅ เสร็จสิ้น</span>'}
+                    </div>
+                    <div style="display: flex; gap: 5px; margin-bottom: 5px; flex-wrap: wrap;">
+                        <span style="${getChannelStyle(data.channel)} padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${data.channel || ''}</span>
+                        <span style="background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">${data.product || ''}</span>
+                        ${(data.addon || '').includes('เพิ่มไส้') ? `<span style="background: #fce7f3; color: #9d174d; padding: 2px 8px; border-radius: 10px; font-size: 0.8em;">+เพิ่มไส้ ${data.product === '3 กรต 6' ? '+50฿' : '+100฿'}</span>` : ''}
+                        <span style="background: #f8fafc; color: #64748b; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; border: 1px solid #e2e8f0;">👤 ${data.recordedBy || 'System'}</span>
+                    </div>
+                    <p>🆔 Order No: ${highlightText(data.tracking || '', lastSearchQuery)}</p>
+                    ${data.note ? `<p style="color: #6366f1; font-size: 0.9em; margin-top: 5px; background: #eef2ff; padding: 5px 10px; border-radius: 8px;">📝 ${data.note}</p>` : ''}
+                    <p class="time-badge">🕒 ${isSkipped ? 'ข้ามเมื่อ: ' + (data.skippedAt ? new Date(data.skippedAt).toLocaleString('th-TH') : '-') : 'เสร็จเมื่อ: ' + timeStr}</p>
+                `;
+            }
+        }
+
+        async function exportToExcel() {
+            if (currentHistoryData.length === 0) {
+                showNotification('❌ ไม่มีข้อมูลในรายการที่โหลดปัจจุบัน', false);
+                return;
+            }
+
+            showNotification('⏳ กำลังเตรียมไฟล์ Excel...');
+
+            let completedCounter = 0;
+            const data = currentHistoryData.map((c) => {
+                const isSkipped = c.status === 'skipped';
+                let orderNum = '-';
+                if (!isSkipped) {
+                    completedCounter++;
+                    orderNum = completedCounter;
+                }
+
+                return {
+                    'ลำดับ': orderNum,
+                    'ชื่อ-นามสกุล': c.name,
+                    'หมายเลข Order': c.tracking,
+                    'เบอร์โทร': c.phone,
+                    'ช่องทาง': c.channel,
+                    'สินค้า': c.product,
+                    'ตัวเลือกเสริม': c.addon,
+                    'หมายเหตุ': c.note || '',
+                    'ราคาเพิ่ม': c.price,
+                    'เวลาจอง': new Date(c.timestamp).toLocaleString('th-TH'),
+                    'สถานะ': isSkipped ? 'ไม่อยู่' : 'เสร็จสิ้น',
+                    'เวลาดำเนินการ': isSkipped
+                        ? (c.skippedAt ? new Date(c.skippedAt).toLocaleString('th-TH') : '-')
+                        : (c.completedAt ? new Date(c.completedAt).toLocaleString('th-TH') : '-')
+                };
+            });
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "HistoryRecords");
+            XLSX.writeFile(wb, `Queue_History_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showNotification('✅ Export สำเร็จ!');
+        }
+
+        async function clearAllHistory() {
+            if (!confirm('⚠️ คุณแน่ใจหรือไม่ว่าต้องการ "ล้างประวัติทีละ 500 รายการ"?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/history', { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('🗑️ ' + result.message);
+                    fetchHistory(true);
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                }
+            } catch (error) {
+                showNotification('❌ เกิดข้อผิดพลาดในการล้างประวัติ', false);
+            }
+        }
+
+        // --- QUEUE ACTIONS ---
 
         // Complete/Delete queue item
         async function completeQueue(customerId) {
@@ -268,17 +726,15 @@
                 if (result.success) {
                     showNotification('✅ ' + result.message, true);
 
-                    // Remove item with animation
                     const item = document.querySelector(`[data-id="${customerId}"]`);
                     if (item) {
                         item.style.transition = 'all 0.3s ease';
                         item.style.opacity = '0';
                         item.style.transform = 'translateX(100px)';
-
-                        setTimeout(() => {
-                            // UI will update naturally via SSE
-                        }, 300);
                     }
+                    
+                    // Refresh history after a short delay
+                    setTimeout(() => fetchHistory(true), 1000);
                 } else {
                     showNotification('❌ ' + result.message, false);
                 }
@@ -288,7 +744,7 @@
             }
         }
 
-        // Skip queue item (Not present)
+        // Skip queue item
         async function skipQueue(customerId) {
             if (!confirm('ยืนยันข้ามคิวนี้ (เนื่องจากไม่อยู่)?')) return;
 
@@ -301,7 +757,7 @@
 
                 if (result.success) {
                     showNotification('⏭️ ' + result.message, true);
-                    // UI will update naturally via SSE
+                    setTimeout(() => fetchHistory(true), 1000);
                 } else {
                     showNotification('❌ ' + result.message, false);
                 }
@@ -311,48 +767,118 @@
             }
         }
 
-        // Initial load via SSE
+        // Restore queue item (Back to Waiting)
+        async function restoreQueue(customerId) {
+            if (!confirm('ยืนยันนำคิวนี้กลับไปที่รายการรอ?')) return;
+
+            try {
+                const response = await fetch(`/api/queue/${customerId}/restore`, {
+                    method: 'POST'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('🔙 ' + result.message, true);
+                    
+                    // Remove from history list visually immediately
+                    const item = document.querySelector(`.history-item [onclick*="restoreQueue(${customerId})"]`)?.closest('.history-item');
+                    if (item) {
+                        item.style.transition = 'all 0.3s ease';
+                        item.style.opacity = '0';
+                        item.style.transform = 'translateX(-100px)';
+                        setTimeout(() => item.remove(), 300);
+                    }
+
+                    // Refresh history to be sure
+                    setTimeout(() => fetchHistory(true), 500);
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                }
+            } catch (error) {
+                showNotification('❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', false);
+                console.error('Error:', error);
+            }
+        }
+
+        // Real-time System (Firebase Client SDK)
         function initRealtimeUpdates() {
             const statusBadge = document.getElementById('connectionStatus');
             const statusText = document.getElementById('statusText');
+            const queueSearch = document.getElementById('queueSearch');
+            // (removed fake customers builder)
+
+            // Queue Search Logic
+            queueSearch.addEventListener('keyup', (e) => {
+                const query = e.target.value.toLowerCase();
+                const filtered = currentQueueData.filter(item => 
+                    (item.name || '').toLowerCase().includes(query) ||
+                    (item.phone || '').includes(query) ||
+                    (item.tracking || '').toLowerCase().includes(query)
+                );
+                displayQueue(filtered);
+            });
 
             statusBadge.className = 'connection-badge status-connecting';
-            statusText.textContent = 'กำลังเชื่อมต่อ...';
+            statusText.textContent = 'Connecting...';
 
-            const eventSource = new EventSource('/api/events');
-
-            eventSource.onopen = () => {
-                statusBadge.className = 'connection-badge status-live';
-                statusText.textContent = 'Live';
-            };
-
-            eventSource.onmessage = (event) => {
-                const result = JSON.parse(event.data);
-                if (result.success) {
-                    currentQueueData = result.queue;
-                    displayQueue(result.queue);
-                    queueCountEl.textContent = `${result.total} คิว`;
-                }
-            };
-
-            eventSource.onerror = (err) => {
-                console.error('EventSource failed:', err);
+            if (typeof db === 'undefined') {
+                console.error("Firebase DB not initialized");
                 statusBadge.className = 'connection-badge status-error';
-                statusText.textContent = 'การเชื่อมต่อขัดข้อง - กำลังลองใหม่';
-                eventSource.close();
-                // Try to reconnect after 5 seconds
-                setTimeout(initRealtimeUpdates, 5000);
-            };
+                statusText.textContent = 'Config Missing';
+                return;
+            }
+
+            // Listen to 'queue' collection
+            db.collection('queue')
+                .where('status', '==', 'waiting')
+                .orderBy('timestamp', 'asc')
+                .onSnapshot((snapshot) => {
+                    const queue = [];
+                    snapshot.forEach((doc) => {
+                        // Ensure we use the numeric ID for operations, but keep firebaseId just in case
+                        const data = doc.data();
+                        queue.push({ 
+                            ...data, 
+                            firebaseId: doc.id 
+                        });
+                    });
+
+                    // Update UI
+                    statusBadge.className = 'connection-badge status-live';
+                    statusText.textContent = 'Live';
+                    currentQueueData = queue;
+                    displayQueue(queue);
+                    queueCountEl.textContent = `${queue.length} คิว`;
+
+                }, (error) => {
+                    console.error("Firebase Realtime Error:", error);
+                    statusBadge.className = 'connection-badge status-error';
+                    statusText.textContent = 'Connection Error';
+                    
+                    if (error.code === 'permission-denied') {
+                         console.error("Check Firestore Security Rules. Public read access might be required.");
+                    }
+                });
         }
 
         initRealtimeUpdates();
+        
+        // Initial History Load
+        initHistory();
 
         // Edit Functionality
         const editModal = document.getElementById('editModal');
         const editForm = document.getElementById('editForm');
 
         function openEditModal(customerId) {
-            const customer = currentQueueData.find(q => q.id === customerId);
+            let customer = currentQueueData.find(q => q.id === customerId);
+            
+            // If not found in queue, check history
+            if (!customer) {
+                customer = masterHistoryData.find(q => q.id === customerId);
+            }
+
             if (!customer) return;
 
             document.getElementById('editId').value = customer.id;
@@ -361,6 +887,10 @@
             document.getElementById('editPhone').value = customer.phone;
             document.getElementById('editProduct').value = customer.product;
             document.getElementById('editNote').value = customer.note || '';
+
+            // Handle Addons
+            const addonStr = customer.addon || '';
+            document.getElementById('editAddon').checked = addonStr.includes('เพิ่มไส้');
 
             editModal.style.display = 'flex';
         }
@@ -372,11 +902,16 @@
         editForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('editId').value;
+            
+            const isAddon = document.getElementById('editAddon').checked;
+            const addonStr = isAddon ? 'เพิ่มไส้' : '-';
+
             const updatedData = {
                 name: document.getElementById('editName').value,
                 tracking: document.getElementById('editTracking').value,
                 phone: document.getElementById('editPhone').value,
                 product: document.getElementById('editProduct').value,
+                addon: addonStr,
                 note: document.getElementById('editNote').value
             };
 
@@ -391,7 +926,10 @@
                 if (result.success) {
                     showNotification('✅ ' + result.message);
                     closeEditModal();
-                    // UI will update automatically via SSE
+                    
+                    // Refresh history without full reset if possible, 
+                    // or just initHistory to be safe (since we removed local updates)
+                    fetchHistory(false); 
                 } else {
                     showNotification('❌ ' + result.message, false);
                 }
@@ -399,8 +937,6 @@
                 showNotification('❌ เกิดข้อผิดพลาดในการบันทึก', false);
             }
         });
-
-        // Initial load handled by initRealtimeUpdates();
     </script>
 </body>
 

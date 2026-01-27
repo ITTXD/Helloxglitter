@@ -8,8 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <script src="theme.js" defer></script>
+    <link rel="stylesheet" href="styles.css?v=16">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <style>
         /* Specific Styles for Customer Page */
         @keyframes pulse-text {
@@ -69,7 +71,7 @@
 
 <body>
     <div class="container dashboard-container">
-        <h1 style="font-family: 'Great Vibes', cursive; font-size: 3em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxgliiter</h1>
+        <h1 style="font-family: 'Great Vibes', cursive; font-size: 3em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxglitter</h1>
         <h1>🔍 ตรวจสอบสถานะคิว</h1>
         <p class="subtitle">เช็คคิวได้ง่ายๆ เพียงกรอกเบอร์โทรศัพท์เลยงับ</p>
 
@@ -125,39 +127,56 @@
         let currentQueueData = [];
         let isFirstLoad = true;
 
-        // Initialize Real-time Updates via SSE
+        // Real-time System (Firebase Client SDK)
         function initRealtimeUpdates() {
             const statusBadge = document.getElementById('connectionStatus');
             const statusText = document.getElementById('statusText');
 
-            const eventSource = new EventSource('/api/events');
+            // Optional: Show connecting state if elements exist
+            if (statusBadge && statusText) {
+                statusBadge.className = 'connection-badge status-connecting';
+                statusText.textContent = 'Connecting...';
+            }
 
-            eventSource.onopen = () => {
-                statusBadge.className = 'connection-badge status-live';
-                statusText.textContent = 'Live';
-            };
+            if (typeof db === 'undefined') {
+                console.error("Firebase DB not initialized");
+                if (statusBadge) statusBadge.className = 'connection-badge status-error';
+                return;
+            }
 
-            eventSource.onmessage = (event) => {
-                const result = JSON.parse(event.data);
-                if (result.success) {
-                    currentQueueData = result.queue;
-                    displayQueue(result.queue);
-                    queueCountEl.textContent = `${result.total} คิว`;
+            // Listen to 'queue' collection
+            db.collection('queue')
+                .where('status', '==', 'waiting')
+                .orderBy('timestamp', 'asc')
+                .onSnapshot((snapshot) => {
+                    const queue = [];
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        queue.push({ ...data, firebaseId: doc.id });
+                    });
+                    
+                    // Update Global State
+                    currentQueueData = queue;
 
-                    // Re-check status if user previously searched (Update ONLY mode)
-                    const searchInput = document.getElementById('searchPhone').value.trim();
-                    if (searchInput) {
-                        updateSearchStatus(searchInput, true);
+                    // Update UI if we have active search results
+                    if (searchCache) {
+                        renderSearchResults();
                     }
-                }
-            };
+                    
+                    // Update Status Badge
+                    if (statusBadge && statusText) {
+                        statusBadge.className = 'connection-badge status-live';
+                        statusText.textContent = 'Live';
+                    }
+                    
+                    // Update Queue List if it exists (hidden debugging or future use)
+                    if (queueList) displayQueue(queue);
+                    if (queueCountEl) queueCountEl.textContent = `${queue.length} คิว`;
 
-            eventSource.onerror = (err) => {
-                statusBadge.className = 'connection-badge status-error';
-                statusText.textContent = 'ขัดข้อง';
-                eventSource.close();
-                setTimeout(initRealtimeUpdates, 5000);
-            };
+                }, (error) => {
+                    console.error("Firebase Realtime Error:", error);
+                    if (statusBadge) statusBadge.className = 'connection-badge status-error';
+                });
         }
 
         // Add CSS for connection status (reusing from dashboard)
@@ -311,26 +330,51 @@
                 if (activeRecord) {
                     // Customer is currently in the active waiting queue
                     const myIndex = currentQueueData.indexOf(activeRecord);
+                    const myQueueNumber = activeRecord.id; // Use persistent ID
+                    
+                    // Get the ID of the first person in queue (Current processing queue)
+                    const currentQueueId = currentQueueData.length > 0 ? currentQueueData[0].id : '-';
                     
                     let aheadInfo = '';
                     if (myIndex > 0) {
                         aheadInfo = `
-                            <div style="font-size: 1.1em;">
-                                อีก <strong class="text-pink-shimmer" style="font-size: 1.3em;">${myIndex}</strong> คิวจะถึงคุณ
+                            <div style="margin-top: 15px; padding: 15px; background: #fff0f5; border-radius: 12px; border: 1px dashed #ff758c;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span style="color: #666;">🔥 กำลังจุ่มคิวที่:</span>
+                                    <strong style="font-size: 1.2em; color: #ff758c;">#${currentQueueId}</strong>
+                                </div>
+                                <div style="display: flex; justify-content: space-between;">
+                                    <span style="color: #666;">⏳ อีกกี่คิวถึงเรา:</span>
+                                    <strong style="font-size: 1.2em; color: #333;">${myIndex} คิว</strong>
+                                </div>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 0.9em; color: #888;">
+                                * กรุณารอเรียกคิว
                             </div>
                         `;
                     } else {
                         aheadInfo = `
-                            <div style="font-size: 1.1em; color: #10b981; font-weight: bold; animation: pulse-text 1.5s infinite;">
-                                ถึงคิวของคุณแล้ว!
+                            <div style="margin-top: 15px; padding: 15px; background: #ecfdf5; border-radius: 12px; border: 1px dashed #10b981; animation: pulse-green 2s infinite;">
+                                <div style="font-size: 1.2em; color: #059669; font-weight: bold; text-align: center;">
+                                    🎉 ถึงคิวของคุณแล้ว! 🎉
+                                </div>
+                                <div style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
+                                    <img src="Catsmile.jpg" alt="Catsmile" style="max-width: 150px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                                </div>
+                                <div style="text-align: center; color: #047857; margin-top: 5px;">
+                                    กำลังดำเนินการจุ่ม...
+                                </div>
                             </div>
                         `;
                     }
 
                     statusHtml = `
                         <div style="text-align: center;">
-                            <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333;">${customer.product}</span>
-                            <span class="my-queue-number" style="margin: 5px 0;">คิวที่ ${myIndex + 1}</span>
+                            <span style="display: block; font-size: 1.1em; color: #555; margin-bottom: 5px;">${customer.product}</span>
+                            <div style="background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%); color: white; padding: 10px; border-radius: 15px; display: inline-block; min-width: 120px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(255, 117, 140, 0.4);">
+                                <span style="font-size: 0.9em; opacity: 0.9;">คิวของคุณ</span>
+                                <div style="font-size: 2.5em; font-weight: bold; line-height: 1;">${myQueueNumber}</div>
+                            </div>
                             ${aheadInfo}
                         </div>
                     `;
@@ -339,6 +383,9 @@
                         <div style="text-align: center;">
                             <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 5px;">${customer.product}</span>
                             <strong style="color: #059669; font-size: 1.4em;">🎁 จุ่มแล้วเรียบร้อย! 🎁</strong>
+                            <div style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
+                                <img src="Catfinish.jpg" alt="Catfinish" style="max-width: 150px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                            </div>
                             <p style="color: #666; font-size: 0.9em; margin-top: 5px;">เสร็จสิ้นเมื่อ: ${new Date(customer.completedAt).toLocaleString('th-TH')}</p>
                         </div>
                     `;
@@ -347,6 +394,9 @@
                         <div style="text-align: center;">
                             <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 5px;">${customer.product}</span>
                             <strong style="color: #f59e0b; font-size: 1.4em;">⏭️ ข้ามแล้ว (ไม่อยู่ที่หน้าคิว)</strong>
+                            <div style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
+                                <img src="Catcry.jpg" alt="Catcry" style="max-width: 150px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                            </div>
                             <p style="color: #666; font-size: 0.9em; margin-top: 5px;">ข้ามเมื่อ: ${customer.skippedAt ? new Date(customer.skippedAt).toLocaleString('th-TH') : '-'}</p>
                             <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">* หากกลับมาแล้ว โปรดติดต่อแอดมิน</p>
                         </div>

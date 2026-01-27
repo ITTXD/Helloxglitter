@@ -8,8 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <script src="theme.js" defer></script>
+  <link rel="stylesheet" href="styles.css?v=16">
 </head>
 
 <body>
@@ -21,33 +20,37 @@
       <!-- Admin Selection -->
       <div class="form-group full-width admin-select-compact">
         <label for="recordedBy">👤 แอดมิน:</label>
-        <select id="recordedBy" name="recordedBy" required style="flex: 1; border: none; background: transparent; font-weight: 600;">
+        <select id="recordedBy" name="recordedBy" style="flex: 1; border: none; background: transparent; font-weight: 600;">
           <option value="">-- เลือก --</option>
-          <option value="แอดมินกัมมี่">แอดมินกัมมี่</option>
-          <option value="แอดมินเยลลี่">แอดมินเยลลี่</option>
+          <option value="แอดมินกัมมี่🧸">แอดมินกัมมี่🧸</option>
+          <option value="แอดมินเยลลี่🍬">แอดมินเยลลี่🍬</option>
+          <option value="แอดมินแคนดี้🍭">แอดมินแคนดี้🍭</option>
+          <option value="แอดมินปีโป้💘">แอดมินปีโป้💘</option>
+          <option value="แอดมินฮันนี่🍯">แอดมินฮันนี่🍯</option>
+          <option value="แอดมินเอมมี่">แอดมินเอมมี่</option>
           <option value="อื่นๆ">อื่นๆ</option>
         </select>
       </div>
 
       <div class="form-group full-width">
-        <label for="name">ชื่อ-นามสกุล *</label>
-        <input type="text" id="name" name="name" placeholder="กรอกชื่อ-นามสกุล" required>
+        <label for="name">ชื่อ</label>
+        <input type="text" id="name" name="name" placeholder="กรอกชื่อ">
       </div>
 
       <div class="form-group">
-        <label for="phone">เบอร์โทรศัพท์ *</label>
+        <label for="phone">เบอร์โทรศัพท์</label>
         <input type="tel" id="phone" name="phone" placeholder="0xxxxxxxxx"
-          pattern="[0-9]{9,10}" title="กรุณากรอกเบอร์โทรศัพท์เป็นตัวเลข 9-10 หลัก" required>
+          pattern="[0-9]{9,10}" title="กรุณากรอกเบอร์โทรศัพท์เป็นตัวเลข 9-10 หลัก">
       </div>
 
       <div class="form-group">
-        <label for="tracking">หมายเลข Order *</label>
-        <input type="text" id="tracking" name="tracking" placeholder="เลข Order" required>
+        <label for="tracking">หมายเลข Order</label>
+        <input type="text" id="tracking" name="tracking" placeholder="เลข Order">
       </div>
 
       <div class="form-group">
-        <label for="channel">ช่องทาง *</label>
-        <select id="channel" name="channel" required>
+        <label for="channel">ช่องทาง</label>
+        <select id="channel" name="channel">
           <option value="">-- เลือก --</option>
           <option value="Shopee">Shopee</option>
           <option value="Line">Line</option>
@@ -56,17 +59,17 @@
       </div>
 
       <div class="form-group">
-        <label for="product">สินค้า *</label>
-        <select id="product" name="product" required>
+        <label for="product">สินค้า</label>
+        <select id="product" name="product">
           <option value="">-- เลือก --</option>
-          <option value="3 กลต 6">3 กลต 6</option>
-          <option value="12 กลต 21">12 กลต 21</option>
+          <option value="3 กรต 6">3 กรต 6</option>
+          <option value="6 กรต 12">6 กรต 12</option>
         </select>
       </div>
 
       <div class="form-group full-width checkbox-group">
         <input type="checkbox" id="addon" name="addon">
-        <label for="addon">เพิ่มไส้ (3กรต6 +50฿ / 12กรต21 +100฿)</label>
+        <label for="addon">เพิ่มไส้ (3กรต6 +50฿ / 6กรต12 +100฿)</label>
       </div>
 
       <div class="form-group full-width">
@@ -78,7 +81,7 @@
     </form>
 
     <div class="link-container">
-      <a href="/dashboard.html">🖥️ ไปหน้า Dashboard</a>
+      <a href="/dashboard.html">📜 ไปหน้าประวัติ</a>
     </div>
   </div>
 
@@ -130,6 +133,72 @@
     // Admin Selection Persistence Logic
     const recordedBySelect = document.getElementById('recordedBy');
 
+    // Smart Paste Logic for Name Input
+    const nameInput = document.getElementById('name');
+    const phoneInput = document.getElementById('phone');
+
+    nameInput.addEventListener('paste', (e) => {
+      // Prevent default paste to handle it manually
+      e.preventDefault();
+      
+      // Get pasted text
+      let paste = (e.clipboardData || window.clipboardData).getData('text');
+      
+      if (!paste) return;
+
+      // 1. Extract Phone Number (Thai mobile pattern: 08x-xxx-xxxx, 09x, 06x)
+      // Matches 06, 08, 09 followed by 8 digits, allowing spaces or dashes
+      const phoneRegex = /0[689]\d{1}[-\s]?\d{3}[-\s]?\d{4}/;
+      const phoneMatch = paste.match(phoneRegex);
+
+      let extractedPhone = '';
+      let cleanText = paste;
+
+      if (phoneMatch) {
+        extractedPhone = phoneMatch[0].replace(/[-\s]/g, ''); // Clean dashes/spaces
+        phoneInput.value = extractedPhone; // Auto-fill phone field
+        
+        // Remove phone number from the text to isolate name
+        cleanText = cleanText.replace(phoneMatch[0], '');
+      }
+
+      // 2. Extract Name
+      // Logic: Take the first line or first chunk before address keywords
+      // Keywords to stop at: numbers (house no), "หมู่", "ต.", "อ.", "จ.", "บ้าน", "ซอย", "ถนน"
+      
+      // Split by newlines first to try getting the first line
+      let lines = cleanText.split(/[\r\n]+/);
+      let potentialName = lines[0].trim();
+
+      // If the first line is empty (e.g. paste started with newline), try next
+      if (!potentialName && lines.length > 1) {
+          potentialName = lines[1].trim();
+      }
+
+      // Further cleaning of the name line
+      // Remove common prefixes
+      potentialName = potentialName.replace(/^(ชื่อ|ผู้รับ|คุณ|K\.|คุณ|Tel|โทร)[:\s]*/ig, '');
+
+      // Stop before address keywords if they appear in the same line
+      // Regex looks for space followed by address start
+      const addressStartRegex = /\s+(?=\d+\/|\d+|หมู่|ต\.|อ\.|จ\.|บ้าน|ซอย|ถนน|แขวง|เขต|จังหวัด|อำเภอ|ตำบล)/;
+      const addressSplit = potentialName.split(addressStartRegex);
+      
+      if (addressSplit.length > 0) {
+          potentialName = addressSplit[0];
+      }
+
+      // Final trim
+      nameInput.value = potentialName.trim();
+      
+      // Visual feedback (Optional)
+      if (extractedPhone) {
+          showNotification('✨ แยกชื่อและเบอร์โทรให้แล้ว!', true);
+          phoneInput.style.borderColor = '#10b981';
+          setTimeout(() => phoneInput.style.borderColor = '', 2000);
+      }
+    });
+
     // Load last admin from localStorage
     const savedAdmin = localStorage.getItem('lastAdmin');
     if (savedAdmin) {
@@ -147,6 +216,13 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      const btn = form.querySelector('.btn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ กำลังจอง...';
+      btn.style.opacity = '0.7';
+      btn.style.cursor = 'not-allowed';
+
       const name = document.getElementById('name').value;
       const tracking = document.getElementById('tracking').value;
       const phone = document.getElementById('phone').value;
@@ -160,8 +236,8 @@
       // Price Logic
       let addonPrice = 0;
       if (isAddon) {
-        if (product === '3 กลต 6') addonPrice = 50;
-        if (product === '12 กลต 21') addonPrice = 100;
+        if (product === '3 กรต 6') addonPrice = 50;
+        if (product === '6 กรต 12') addonPrice = 100;
       }
 
       const formData = {
@@ -198,6 +274,11 @@
       } catch (error) {
         showNotification('❌ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง', false);
         console.error('Error:', error);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
       }
     });
   </script>

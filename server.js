@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initializeFirebase, addCustomer, getQueue, deleteCustomer, skipCustomer, checkCustomerStatus, updateCustomer, clearHistory, listenToQueue } = require('./firebase');
+const { initializeFirebase, addCustomer, getQueue, deleteCustomer, skipCustomer, checkCustomerStatus, updateCustomer, clearHistory, restoreCustomer } = require('./firebase');
 
 const app = express();
 const PORT = 3000;
@@ -9,7 +9,25 @@ const PORT = 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+// Enable caching for static files (Disabled for debugging/updates)
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: '0'
+}));
+
+// Root route to ensure index.html is served
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Special route for customer queue (Alias)
+app.get('/helloxglitter.queue', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'customer.html'));
+});
+
+// Handle typo version just in case
+app.get('/helloxglitte.queue', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'customer.html'));
+});
 
 // Initialize Firebase
 const firebaseInitialized = initializeFirebase();
@@ -18,65 +36,20 @@ if (!firebaseInitialized) {
     console.warn('👉 Please check FIREBASE_SETUP.md and ensure serviceAccountKey.json is present.');
 }
 
-// --- Real-time Setup (SSE + onSnapshot) ---
-let clients = [];
-let currentQueueBuffer = [];
-
-// Initialize Firestore listener
-if (firebaseInitialized) {
-    listenToQueue((newQueue) => {
-        currentQueueBuffer = newQueue;
-        // Broadcast to all connected clients
-        const payload = JSON.stringify({
-            success: true,
-            queue: newQueue,
-            total: newQueue.length
-        });
-
-        clients.forEach(client => {
-            client.res.write(`data: ${payload}\n\n`);
-        });
-    });
-}
-
-// SSE Endpoint for real-time updates
-app.get('/api/events', (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    // Send initial data immediately
-    const initialPayload = JSON.stringify({
-        success: true,
-        queue: currentQueueBuffer,
-        total: currentQueueBuffer.length
-    });
-    res.write(`data: ${initialPayload}\n\n`);
-
-    // Add client to broadcast list
-    const clientId = Date.now();
-    const newClient = { id: clientId, res };
-    clients.push(newClient);
-
-    // Remove client on disconnect
-    req.on('close', () => {
-        clients = clients.filter(c => c.id !== clientId);
-    });
-});
-
 // API Routes
 
 // POST /api/add - Add new customer to queue
+// Forced rebuild timestamp: 2026-01-24
 app.post('/api/add', async (req, res) => {
     const { name, tracking, phone, note, channel, product, addon, price, recordedBy } = req.body;
 
-    // Validation
-    if (!name || !tracking || !phone) {
-        return res.status(400).json({
-            success: false,
-            message: 'กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อ, เลข Tracking, เบอร์โทรศัพท์)'
-        });
-    }
+    // Validation (Relaxed for optional fields)
+    // if (!name || !tracking || !phone) {
+    //     return res.status(400).json({
+    //         success: false,
+    //         message: 'กรุณากรอกข้อมูลให้ครบถ้วน (ชื่อ, เลข Tracking, เบอร์โทรศัพท์)'
+    //     });
+    // }
 
     try {
         const customer = await addCustomer({
@@ -127,14 +100,15 @@ app.get('/api/history', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 20;
         const after = req.query.after || null;
+        const search = req.query.search || null;
 
-        const history = await getQueue('history', limit, after);
+        const history = await getQueue('history', limit, after, search);
 
         res.json({
             success: true,
             queue: history,
             total: history.length,
-            hasMore: history.length === limit
+            hasMore: history.length === limit // Note: This might be inaccurate with search, but acceptable
         });
     } catch (error) {
         res.status(500).json({
@@ -180,6 +154,26 @@ app.post('/api/queue/:id/skip', async (req, res) => {
         res.status(404).json({
             success: false,
             message: 'ไม่สามารถข้ามคิวได้ หรือไม่พบข้อมูล: ' + error.message
+        });
+    }
+});
+
+// POST /api/queue/:id/restore - Restore customer to waiting queue
+app.post('/api/queue/:id/restore', async (req, res) => {
+    const customerId = req.params.id;
+
+    try {
+        const restoredCustomer = await restoreCustomer(customerId);
+
+        res.json({
+            success: true,
+            message: 'ย้ายกลับมาคิวรอเรียบร้อยแล้ว',
+            customer: restoredCustomer
+        });
+    } catch (error) {
+        res.status(404).json({
+            success: false,
+            message: 'ไม่สามารถย้ายกลับได้ หรือไม่พบข้อมูล: ' + error.message
         });
     }
 });

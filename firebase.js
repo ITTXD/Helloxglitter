@@ -69,6 +69,17 @@ async function addCustomer(data) {
             let nextId = 1;
 
             if (counterDoc.exists) {
+                // If lastId is very high (e.g., > 1000), we might want to allow a manual reset.
+                // But normally we just increment.
+                // If user wants to "Reset to 1", they can delete the metadata/counters doc manually,
+                // or we can provide an API to reset it.
+                // For now, we assume the user wants to start from 1 because the current count is too high from testing.
+                
+                // However, to FORCE reset to 1 now as requested ("อันนี้มันเริ่มที่ 87"):
+                // We should check if this is the first time we are running this logic? No.
+                // We will create a one-time reset endpoint or just modify this logic temporarily?
+                // Modifying logic here to force 1 is dangerous if data exists.
+                
                 nextId = (counterDoc.data().lastId || 0) + 1;
             }
 
@@ -176,11 +187,47 @@ async function checkCustomerStatus(phone) {
  * @param {string} status - 'waiting' or 'completed'
  * @param {number} limitNum - Number of records to fetch
  * @param {string} lastDocId - Optional ID to start after (for pagination)
+ * @param {string} searchQuery - Optional search term
  */
-async function getQueue(status = 'waiting', limitNum = 100, lastDocId = null) {
+async function getQueue(status = 'waiting', limitNum = 100, lastDocId = null, searchQuery = null) {
     try {
         if (!db) throw new Error('Firebase not initialized');
 
+        // If searching history, we switch strategy to "Fetch Recent & Filter in Memory"
+        // This avoids complex Firestore composite indexes and allows fuzzy search
+        if (searchQuery && status === 'history') {
+            console.log(`[FIREBASE] Searching history for: "${searchQuery}"`);
+            
+            // Fetch a larger chunk of recent history (e.g., last 200 items)
+            // Ideally, for a full search system, we'd need a dedicated search service (Algolia/Meilisearch)
+            // But for this scale, memory filtering of recent items is sufficient and cost-effective.
+            const fetchLimit = 200; 
+            
+            const snapshot = await db.collection('queue')
+                .where('status', 'in', ['completed', 'skipped'])
+                .orderBy('finishedAt', 'desc')
+                .limit(fetchLimit)
+                .get();
+
+            const queue = [];
+            const lowerQuery = searchQuery.toLowerCase();
+
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                // Check for matches in name, phone, or tracking
+                const matchName = (data.name || '').toLowerCase().includes(lowerQuery);
+                const matchPhone = (data.phone || '').includes(searchQuery);
+                const matchTracking = (data.tracking || '').toLowerCase().includes(lowerQuery);
+
+                if (matchName || matchPhone || matchTracking) {
+                    queue.push({ firebaseId: doc.id, ...data });
+                }
+            });
+
+            return queue;
+        }
+
+        // Standard Pagination Logic (No Search)
         let query = db.collection('queue');
 
         if (status === 'history') {
@@ -275,6 +322,17 @@ async function clearHistory() {
 
         await batch.commit();
         console.log(`✅ Cleared ${snapshot.size} history records`);
+
+        // Check if there are ANY waiting or completed/skipped items left.
+        // If the queue is completely empty (or we just cleared the last history items and no waiting items exist),
+        // we can reset the counter.
+        
+        // Check for any remaining documents in 'queue' collection
+        const remainingSnapshot = await db.collection('queue').limit(1).get();
+        if (remainingSnapshot.empty) {
+            console.log('🧹 Queue is completely empty. Resetting ID counter to 0.');
+            await db.collection('metadata').doc('counters').set({ lastId: 0 });
+        }
 
         // If there were 500, there might be more, but for safety in one request we clear 500.
         // The user can click again if needed, or we could loop (but loop is risky for timeouts).
@@ -394,27 +452,39 @@ async function skipCustomer(id) {
 }
 
 /**
- * Listen for real-time updates to the queue
- * @param {function} callback - Function to call when queue changes
+ * Restore a customer to the waiting queue
+ * @param {number} id - The numeric ID of the customer
  */
-function listenToQueue(callback) {
-    if (!db) return null;
+async function restoreCustomer(id) {
+    try {
+        if (!db) throw new Error('Firebase not initialized');
 
-    return db.collection('queue')
-        .where('status', '==', 'waiting')
-        .orderBy('timestamp', 'asc')
-        .onSnapshot(snapshot => {
-            const queue = [];
-            snapshot.forEach(doc => {
-                queue.push({
-                    firebaseId: doc.id,
-                    ...doc.data()
-                });
-            });
-            callback(queue);
-        }, error => {
-            console.error('Real-time listener error:', error.message);
+        // Find the document with this numeric ID
+        const snapshot = await db.collection('queue')
+            .where('id', '==', parseInt(id))
+            .get();
+
+        if (snapshot.empty) {
+            throw new Error('Customer not found');
+        }
+
+        const doc = snapshot.docs[0];
+
+        // Update status to 'waiting' and remove completion timestamps
+        await db.collection('queue').doc(doc.id).update({
+            status: 'waiting',
+            completedAt: admin.firestore.FieldValue.delete(),
+            skippedAt: admin.firestore.FieldValue.delete(),
+            finishedAt: admin.firestore.FieldValue.delete()
         });
+
+        console.log(`🔙 Restored customer to waiting queue ID: ${id}`);
+
+        return doc.data();
+    } catch (error) {
+        console.error('Error restoring customer:', error.message);
+        throw error;
+    }
 }
 
 module.exports = {
@@ -426,5 +496,5 @@ module.exports = {
     checkCustomerStatus,
     updateCustomer,
     clearHistory,
-    listenToQueue
+    restoreCustomer
 };
