@@ -30,6 +30,11 @@
   to = "/customer.html"
   status = 200
 
+[[redirects]]
+  from = "/helloxglittercustomer"
+  to = "/customer.html"
+  status = 200
+
 # SPA Fallback (if needed, but here we serve static files)
 # [[redirects]]
 #   from = "/*"
