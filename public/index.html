@@ -295,13 +295,37 @@
       localStorage.setItem('lastAdmin', recordedBy);
 
       try {
-        const response = await fetch('/api/add', {
+        const response = await fetch('/.netlify/functions/api/api/add', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(formData)
         });
+
+        // Fallback for local development or if rewrite fails
+        if (response.status === 404) {
+             const fallbackResponse = await fetch('/api/add', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(formData)
+            });
+            
+            const result = await fallbackResponse.json();
+             if (result.success) {
+              showNotification('✅ ' + result.message, true);
+              form.reset();
+              // Restore admin name after reset
+              document.getElementById('recordedBy').value = recordedBy;
+              // Trigger change event to re-apply color styles
+              document.getElementById('channel').dispatchEvent(new Event('change'));
+            } else {
+              showNotification('❌ ' + result.message, false);
+            }
+            return;
+        }
 
         const result = await response.json();
 
