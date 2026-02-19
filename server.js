@@ -55,6 +55,17 @@ if (!firebaseInitialized) {
 
 // API Routes
 
+// GET /api/health - Diagnostic endpoint
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'online',
+        firebase_connected: firebaseInitialized,
+        env_var_found: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+        timestamp: new Date().toISOString(),
+        version: '1.0.2'
+    });
+});
+
 // POST /api/add - Add new customer to queue
 // Forced rebuild timestamp: 2026-01-24
 app.post('/api/add', async (req, res) => {
