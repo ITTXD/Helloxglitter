@@ -569,7 +569,15 @@
                 currentHistoryData = [];
                 lastFirebaseId = null;
                 historyList.innerHTML = '<p style="text-align:center; padding: 20px;">กำลังโหลด...</p>';
-                const response = await fetch(`/api/history?limit=1000`);
+                
+                // Try Netlify Functions path first
+                let response = await fetch(`/.netlify/functions/api/api/history?limit=1000`);
+
+                // Fallback if 404
+                if (response.status === 404) {
+                    response = await fetch(`/api/history?limit=1000`);
+                }
+
                 const result = await response.json();
 
                 if (result.success) {
@@ -747,7 +755,14 @@
             }
 
             try {
-                const response = await fetch('/api/history', { method: 'DELETE' });
+                // Try Netlify Functions path first
+                let response = await fetch('/.netlify/functions/api/api/history', { method: 'DELETE' });
+
+                // Fallback if 404
+                if (response.status === 404) {
+                     response = await fetch('/api/history', { method: 'DELETE' });
+                }
+
                 const result = await response.json();
 
                 if (result.success) {
@@ -767,9 +782,17 @@
         // Complete/Delete queue item
         async function completeQueue(customerId) {
             try {
-                const response = await fetch(`/api/queue/${customerId}`, {
+                // Try Netlify Functions path first
+                let response = await fetch(`/.netlify/functions/api/api/queue/${customerId}`, {
                     method: 'DELETE'
                 });
+
+                // Fallback if 404
+                if (response.status === 404) {
+                    response = await fetch(`/api/queue/${customerId}`, {
+                        method: 'DELETE'
+                    });
+                }
 
                 const result = await response.json();
 
@@ -797,9 +820,17 @@
             if (!confirm('ยืนยันข้ามคิวนี้ (เนื่องจากไม่อยู่)?')) return;
 
             try {
-                const response = await fetch(`/api/queue/${customerId}/skip`, {
+                // Try Netlify Functions path first
+                let response = await fetch(`/.netlify/functions/api/api/queue/${customerId}/skip`, {
                     method: 'POST'
                 });
+
+                // Fallback if 404
+                if (response.status === 404) {
+                    response = await fetch(`/api/queue/${customerId}/skip`, {
+                        method: 'POST'
+                    });
+                }
 
                 const result = await response.json();
 
@@ -819,9 +850,17 @@
             if (!confirm('ยืนยันนำคิวนี้กลับไปที่รายการรอ?')) return;
 
             try {
-                const response = await fetch(`/api/queue/${customerId}/restore`, {
+                // Try Netlify Functions path first
+                let response = await fetch(`/.netlify/functions/api/api/queue/${customerId}/restore`, {
                     method: 'POST'
                 });
+
+                // Fallback if 404
+                if (response.status === 404) {
+                    response = await fetch(`/api/queue/${customerId}/restore`, {
+                        method: 'POST'
+                    });
+                }
 
                 const result = await response.json();
 
@@ -876,9 +915,17 @@
 
         async function performDeleteHistoryItem(customerId) {
             try {
-                const response = await fetch(`/api/queue/${customerId}/permanent`, {
+                // Try Netlify Functions path first
+                let response = await fetch(`/.netlify/functions/api/api/queue/${customerId}/permanent`, {
                     method: 'DELETE'
                 });
+
+                // Fallback if 404 (local dev or rewrite issue)
+                if (response.status === 404) {
+                     response = await fetch(`/api/queue/${customerId}/permanent`, {
+                        method: 'DELETE'
+                    });
+                }
 
                 const result = await response.json();
 
@@ -1051,11 +1098,21 @@
             };
 
             try {
-                const response = await fetch(`/api/queue/${id}`, {
+                // Try Netlify Functions path first
+                let response = await fetch(`/.netlify/functions/api/api/queue/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedData)
                 });
+
+                // Fallback if 404
+                if (response.status === 404) {
+                    response = await fetch(`/api/queue/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedData)
+                    });
+                }
 
                 const result = await response.json();
                 if (result.success) {
