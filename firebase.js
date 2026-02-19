@@ -64,23 +64,19 @@ async function addCustomer(data) {
         let resultData = null;
 
         await db.runTransaction(async (t) => {
-            // 1. Get current counter
-            const counterDoc = await t.get(counterRef);
+            // 1. Find the global maximum ID (including completed/skipped)
+            // We look for the highest ID across the entire collection to ensure continuity
+            const maxIdQuery = queueRef.orderBy('id', 'desc').limit(1);
+            const maxIdSnapshot = await t.get(maxIdQuery);
+            
             let nextId = 1;
-
-            if (counterDoc.exists) {
-                // If lastId is very high (e.g., > 1000), we might want to allow a manual reset.
-                // But normally we just increment.
-                // If user wants to "Reset to 1", they can delete the metadata/counters doc manually,
-                // or we can provide an API to reset it.
-                // For now, we assume the user wants to start from 1 because the current count is too high from testing.
-                
-                // However, to FORCE reset to 1 now as requested ("อันนี้มันเริ่มที่ 87"):
-                // We should check if this is the first time we are running this logic? No.
-                // We will create a one-time reset endpoint or just modify this logic temporarily?
-                // Modifying logic here to force 1 is dangerous if data exists.
-                
-                nextId = (counterDoc.data().lastId || 0) + 1;
+            if (!maxIdSnapshot.empty) {
+                const lastDoc = maxIdSnapshot.docs[0].data();
+                // Ensure we handle cases where id might be missing or not a number
+                const lastId = Number(lastDoc.id);
+                if (!isNaN(lastId)) {
+                    nextId = lastId + 1;
+                }
             }
 
             // 2. Prepare customer data
@@ -306,37 +302,66 @@ async function clearHistory() {
     try {
         if (!db) throw new Error('Firebase not initialized');
 
-        const snapshot = await db.collection('queue')
-            .where('status', 'in', ['completed', 'skipped'])
-            .limit(500) // Firestore batch limit
+        // 1. Delete 'completed' items (green)
+        // We do this in a loop to handle cases > 500 items if needed, 
+        // though here we just do one batch for simplicity as per original code limit.
+        const completedSnapshot = await db.collection('queue')
+            .where('status', '==', 'completed')
+            .limit(500)
             .get();
 
-        if (snapshot.empty) {
-            return { count: 0 };
+        if (!completedSnapshot.empty) {
+            const deleteBatch = db.batch();
+            completedSnapshot.docs.forEach(doc => {
+                deleteBatch.delete(doc.ref);
+            });
+            await deleteBatch.commit();
+            console.log(`✅ Cleared ${completedSnapshot.size} COMPLETED history records`);
         }
 
-        const batch = db.batch();
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-        });
+        // 2. Re-index remaining items (skipped/waiting) to start from 1
+        // Fetch ALL remaining items ordered by current ID to preserve relative order
+        const remainingSnapshot = await db.collection('queue')
+            .orderBy('id', 'asc')
+            .get();
 
-        await batch.commit();
-        console.log(`✅ Cleared ${snapshot.size} history records`);
+        let reindexedCount = 0;
 
-        // Check if there are ANY waiting or completed/skipped items left.
-        // If the queue is completely empty (or we just cleared the last history items and no waiting items exist),
-        // we can reset the counter.
-        
-        // Check for any remaining documents in 'queue' collection
-        const remainingSnapshot = await db.collection('queue').limit(1).get();
-        if (remainingSnapshot.empty) {
-            console.log('🧹 Queue is completely empty. Resetting ID counter to 0.');
-            await db.collection('metadata').doc('counters').set({ lastId: 0 });
+        if (!remainingSnapshot.empty) {
+            const updateBatch = db.batch();
+            let newId = 1;
+            let needsUpdate = false;
+
+            remainingSnapshot.docs.forEach(doc => {
+                const currentId = doc.data().id;
+                // Only update if the ID is different (save writes)
+                if (currentId !== newId) {
+                    updateBatch.update(doc.ref, { id: newId });
+                    needsUpdate = true;
+                }
+                newId++;
+            });
+
+            if (needsUpdate) {
+                // Also update the metadata counter
+                const lastAssignedId = newId - 1;
+                updateBatch.set(db.collection('metadata').doc('counters'), { lastId: lastAssignedId }, { merge: true });
+
+                await updateBatch.commit();
+                reindexedCount = remainingSnapshot.size;
+                console.log(`✅ Re-indexed ${reindexedCount} remaining records starting from ID 1`);
+            } else {
+                 // Even if no docs needed update, ensure counter is correct
+                 const lastAssignedId = newId - 1;
+                 await db.collection('metadata').doc('counters').set({ lastId: lastAssignedId }, { merge: true });
+            }
+        } else {
+            // If no items remain, reset counter to 0
+            await db.collection('metadata').doc('counters').set({ lastId: 0 }, { merge: true });
+            console.log(`✅ No remaining records. Reset counter to 0.`);
         }
 
-        // If there were 500, there might be more, but for safety in one request we clear 500.
-        // The user can click again if needed, or we could loop (but loop is risky for timeouts).
-        return { count: snapshot.size };
+        return { count: completedSnapshot.size, reindexed: reindexedCount };
     } catch (error) {
         console.error('Error clearing history:', error.message);
         throw error;
@@ -487,6 +512,34 @@ async function restoreCustomer(id) {
     }
 }
 
+/**
+ * Permanently delete a customer from the database
+ * @param {number} id - The numeric ID of the customer
+ */
+async function permanentlyDeleteCustomer(id) {
+    try {
+        if (!db) throw new Error('Firebase not initialized');
+
+        // 1. Find and delete the document with this numeric ID
+        const snapshot = await db.collection('queue')
+            .where('id', '==', parseInt(id))
+            .get();
+
+        if (snapshot.empty) {
+            throw new Error('Customer not found');
+        }
+
+        const deletedDoc = snapshot.docs[0];
+        await db.collection('queue').doc(deletedDoc.id).delete();
+        console.log(`🗑️ Permanently deleted customer ID: ${id}`);
+
+        return { id, success: true };
+    } catch (error) {
+        console.error('Error permanently deleting customer:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     initializeFirebase,
     addCustomer,
@@ -496,5 +549,6 @@ module.exports = {
     checkCustomerStatus,
     updateCustomer,
     clearHistory,
-    restoreCustomer
+    restoreCustomer,
+    permanentlyDeleteCustomer
 };

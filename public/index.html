@@ -9,12 +9,28 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=16">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js?v=2"></script>
 </head>
 
 <body>
-  <div class="container">
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">Helloxglitter <span style="font-size: 0.85em; color: #94a3b8; margin-left: 8px;">v1.0.2</span></a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item active">🏠 หน้าแรก</a>
+      <a href="preorder.html" class="nav-item">🛍️ สั่งพรี</a>
+      <a href="order.html" class="nav-item">🛍️ สั่งของ</a>
+      <a href="dashboard.html" class="nav-item">⚙️ ระบบหลังบ้าน</a>
+    </div>
+  </nav>
+
+  <div class="container" style="margin-top: 80px;">
     <h1 style="font-family: 'Great Vibes', cursive; font-size: 4em; font-weight: 400;">Helloxglitter</h1>
     <p class="subtitle">*ੈ✩‧₊˚༺☆༻กรุณากรอกข้อมูลเพื่อจองคิว༺☆༻*ੈ✩‧₊˚</p>
+    
+    <!-- Real-time Queue Status Removed -->
 
     <form id="queueForm" class="booking-form-grid">
       <!-- Admin Selection -->
@@ -64,6 +80,7 @@
           <option value="">-- เลือก --</option>
           <option value="3 กรต 6">3 กรต 6</option>
           <option value="6 กรต 12">6 กรต 12</option>
+          <option value="จุ่มกิ้ฟ">จุ่มกิ้ฟ</option>
         </select>
       </div>
 
@@ -79,10 +96,6 @@
 
       <button type="submit" class="btn">จองคิว</button>
     </form>
-
-    <div class="link-container">
-      <a href="/dashboard.html">📜 ไปหน้าประวัติ</a>
-    </div>
   </div>
 
   <div id="notification" class="notification"></div>
@@ -90,6 +103,37 @@
   <script>
     const form = document.getElementById('queueForm');
     const notification = document.getElementById('notification');
+    // const currentServingEl = document.getElementById('currentServing');
+    // const waitingCountEl = document.getElementById('waitingCount');
+
+    // Real-time Queue Status Listener (Disabled as UI is removed)
+    /*
+    if (typeof db !== 'undefined') {
+      db.collection('queue')
+        .where('status', '==', 'waiting')
+        .orderBy('timestamp', 'asc')
+        .onSnapshot((snapshot) => {
+          const waitingCount = snapshot.size;
+          if (typeof waitingCountEl !== 'undefined' && waitingCountEl) {
+             waitingCountEl.textContent = waitingCount;
+          }
+          
+          if (!snapshot.empty) {
+            // First item in waiting queue is the one being served (or next to be served)
+            const firstQueue = snapshot.docs[0].data();
+            if (typeof currentServingEl !== 'undefined' && currentServingEl) {
+                currentServingEl.textContent = firstQueue.id || '-';
+            }
+          } else {
+             if (typeof currentServingEl !== 'undefined' && currentServingEl) {
+                currentServingEl.textContent = '-';
+             }
+          }
+        }, (error) => {
+          console.error("Firebase Status Listener Error:", error);
+        });
+    }
+    */
 
     // Show notification function
     function showNotification(message, success = true) {

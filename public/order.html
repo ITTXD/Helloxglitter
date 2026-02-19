@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>สั่งของ - ลงทะเบียนลูกค้า</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=17">
+  <link rel="stylesheet" href="extra-styles.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <script src="firebase-config.js?v=2"></script>
+  <style>
+    /* Additional styles for preorder page */
+    /* Hide scrollbar for main page */
+    html, body {
+      scrollbar-width: none; /* Firefox */
+      -ms-overflow-style: none; /* IE/Edge */
+      overflow: hidden; /* Disable scrolling */
+    }
+    html::-webkit-scrollbar, body::-webkit-scrollbar {
+      display: none; /* Chrome/Safari/Opera */
+    }
+
+    .container {
+      padding: 20px !important;
+      max-width: 900px !important;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+
+    @media (min-width: 769px) {
+      .main-grid {
+        height: calc(100vh - 180px);
+        overflow: hidden;
+      }
+      
+      /* Form Side: Scrollable but hidden scrollbar */
+      .main-grid > div:first-child {
+        height: 100%;
+        overflow-y: auto;
+        padding-bottom: 30px;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .main-grid > div:first-child::-webkit-scrollbar {
+        display: none;
+      }
+
+      /* Right Side Container */
+      .right-column-container {
+        height: 100%;
+        overflow: hidden;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .booking-form-grid {
+      gap: 8px !important;
+    }
+    
+    /* Preorder List Styles */
+    .right-column-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .preorder-list {
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 12px;
+      padding: 15px;
+      flex: 1;
+      overflow-y: scroll;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      /* Custom scrollbar styling */
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary-color) #f1f5f9;
+    }
+
+    /* Webkit scrollbar styling (Chrome, Safari, Edge) */
+    .preorder-list::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .preorder-list::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
+    }
+    
+    .preorder-list::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+
+    @media (max-width: 768px) {
+      .preorder-list {
+        height: auto;
+        max-height: 500px;
+      }
+    }
+
+    .preorder-item {
+      background: white;
+      border: 1px solid var(--input-border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      animation: fadeIn 0.3s ease;
+      position: relative;
+    }
+    
+    .preorder-item h3 {
+      font-size: 1em;
+      margin-bottom: 5px;
+      color: var(--accent-color);
+    }
+    
+    .preorder-item p {
+      font-size: 0.9em;
+      margin-bottom: 3px;
+      color: var(--text-secondary);
+    }
+    
+    .preorder-item .status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 0.8em;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #e2e8f0;
+      color: #64748b;
+    }
+
+    .preorder-item img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .form-group label {
+      font-size: 0.9em !important;
+      margin-bottom: 2px !important;
+    }
+
+    textarea {
+      width: 100%;
+      padding: 8px;
+      border: 2px solid var(--input-border);
+      border-radius: 12px;
+      font-size: 0.95em;
+      font-family: inherit;
+      background: var(--input-bg);
+      color: var(--text-primary);
+      transition: all 0.3s ease;
+      resize: vertical;
+      min-height: 60px;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 4px rgba(255, 117, 140, 0.2);
+    }
+    
+    .file-upload-wrapper {
+      position: relative;
+      width: 100%;
+      height: 100px;
+      border: 2px dashed var(--input-border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: var(--input-bg);
+      transition: all 0.3s ease;
+      overflow: hidden;
+    }
+    
+    .file-upload-wrapper:hover {
+      border-color: var(--accent-color);
+      background: rgba(255, 117, 140, 0.05);
+    }
+    
+    .file-upload-input {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 2;
+    }
+    
+    .file-upload-content {
+      text-align: center;
+      color: var(--text-secondary);
+      pointer-events: none;
+      font-size: 0.9em;
+    }
+    
+    .file-upload-icon {
+      font-size: 1.5em;
+      margin-bottom: 5px;
+      color: var(--accent-color);
+    }
+    
+    #preview-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: var(--input-bg);
+    }
+
+    .admin-select-compact {
+      padding: 5px 10px !important;
+      margin-bottom: 0 !important;
+    }
+    
+    .btn {
+        margin-top: 10px !important;
+        padding: 10px !important;
+        font-size: 1.1em !important;
+    }
+    
+    /* Edit Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      cursor: pointer;
+      font-size: 2em;
+      color: #94a3b8;
+      font-weight: bold;
+      line-height: 0.8;
+      transition: color 0.2s;
+    }
+    
+    .modal-close:hover {
+        color: var(--accent-color);
+    }
+
+    .edit-btn {
+      background: none;
+      border: 1px solid var(--accent-color);
+      color: var(--accent-color);
+      padding: 2px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
+    
+    .edit-btn:hover {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .complete-btn {
+      background: none;
+      border: 1px solid #10b981;
+      color: #10b981;
+      padding: 2px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
+    
+    .complete-btn:hover {
+      background: #10b981;
+      color: white;
+    }
+
+    .delete-btn {
+      background: none;
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      padding: 2px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
+    
+    .delete-btn:hover {
+      background: #ef4444;
+      color: white;
+    }
+
+  </style>
+</head>
+
+<body>
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">Helloxglitter <span style="font-size: 0.85em; color: #94a3b8; margin-left: 8px;">v1.0.2</span></a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">🏠 หน้าแรก</a>
+      <a href="preorder.html" class="nav-item">🛍️ สั่งพรี</a>
+      <a href="order.html" class="nav-item active">🛍️ สั่งของ</a>
+      <a href="dashboard.html" class="nav-item">⚙️ ระบบหลังบ้าน</a>
+    </div>
+  </nav>
+  
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeEditModal()">×</span>
+      <h3 style="margin-bottom: 15px; color: var(--text-primary);">✏️ แก้ไขข้อมูล</h3>
+      <form id="editForm">
+        <input type="hidden" id="editDocId">
+        
+        <div class="form-group">
+          <label>ชื่อลูกค้า</label>
+          <input type="text" id="editName" style="width: 100%; padding: 8px; border: 1px solid var(--input-border); border-radius: 8px;">
+        </div>
+        
+        <div class="form-group">
+          <label>เบอร์โทร</label>
+          <input type="text" id="editPhone" style="width: 100%; padding: 8px; border: 1px solid var(--input-border); border-radius: 8px;">
+        </div>
+        
+        <div class="form-group">
+          <label>ที่อยู่</label>
+          <textarea id="editAddress" rows="3" style="width: 100%; padding: 8px; border: 1px solid var(--input-border); border-radius: 8px;"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>รายการสินค้า</label>
+          <textarea id="editItems" rows="3" style="width: 100%; padding: 8px; border: 1px solid var(--input-border); border-radius: 8px;"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>หมายเหตุ</label>
+          <textarea id="editNote" rows="2" style="width: 100%; padding: 8px; border: 1px solid var(--input-border); border-radius: 8px;"></textarea>
+        </div>
+        
+        <div class="form-group">
+           <label>สถานะ</label>
+           <select id="editStatus" style="width: 100%; padding: 8px; border: 1px solid var(--input-border); border-radius: 8px;">
+             <option value="pending">pending</option>
+             <option value="deposited">deposited (ฝาก)</option>
+             <option value="confirmed">confirmed</option>
+             <option value="shipped">shipped</option>
+             <option value="cancelled">cancelled</option>
+             <option value="completed">completed</option>
+           </select>
+        </div>
+
+        <button type="submit" class="btn" style="margin-top: 15px;">บันทึกการแก้ไข</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmModal" class="modal-overlay" style="z-index: 2000;">
+    <div class="modal-content" style="text-align: center; max-width: 400px; padding: 30px;">
+      <span class="modal-close" onclick="closeConfirmModal()">×</span>
+      <div id="confirmIcon" style="font-size: 3em; margin-bottom: 10px;">⚠️</div>
+      <h3 id="confirmTitle" style="margin-bottom: 10px; color: var(--text-primary); font-size: 1.5em;">ยืนยันการทำรายการ</h3>
+      <p id="confirmMessage" style="color: var(--text-secondary); margin-bottom: 25px; font-size: 1.1em; line-height: 1.5;"></p>
+      
+      <div style="display: flex; gap: 15px; justify-content: center;">
+        <button onclick="closeConfirmModal()" style="padding: 10px 25px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; cursor: pointer; color: var(--text-secondary); font-size: 1em;">ยกเลิก</button>
+        <button id="confirmOkBtn" style="padding: 10px 25px; border-radius: 8px; border: none; background: var(--accent-color); color: white; cursor: pointer; font-weight: bold; font-size: 1em; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">ยืนยัน</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Gallery Modal -->
+  <div id="galleryModal" class="modal-overlay" style="z-index: 2100;">
+    <div class="modal-content" style="max-width: 600px; padding: 20px;">
+      <span class="modal-close" onclick="closeGalleryModal()">×</span>
+      <h3 style="margin-bottom: 15px; color: var(--text-primary);">🖼️ รูปภาพแนบ</h3>
+      <div id="galleryGrid" class="gallery-grid">
+        <!-- Images will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Screen Image Modal (Lightbox) -->
+  <div id="lightboxModal" class="modal-overlay" style="z-index: 2200; background: rgba(0,0,0,0.9);">
+      <span class="modal-close" onclick="closeLightbox()" style="color: white; top: 20px; right: 20px; font-size: 3em;">×</span>
+      <img id="lightboxImage" src="" style="max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px;">
+  </div>
+
+  <div class="container" style="margin-top: 80px;">
+    <h1 style="font-family: 'Great Vibes', cursive; font-size: 3em; font-weight: 400;">Helloxglitter</h1>
+    <p class="subtitle">*ੈ✩‧₊˚༺☆༻กรุณากรอกข้อมูลเพื่อสั่งของ༺☆༻*ੈ✩‧₊˚</p>
+    
+    <div class="main-grid">
+      <!-- Left Column: Form -->
+      <div>
+        <form id="preorderForm" class="booking-form-grid">
+          <!-- Admin Selection -->
+          <div class="form-group full-width admin-select-compact">
+            <label for="recordedBy">👤 แอดมิน:</label>
+            <select id="recordedBy" name="recordedBy" style="flex: 1; border: none; background: transparent; font-weight: 600;">
+              <option value="">-- เลือก --</option>
+              <option value="แอดมินกัมมี่🧸">แอดมินกัมมี่🧸</option>
+              <option value="แอดมินเยลลี่🍬">แอดมินเยลลี่🍬</option>
+              <option value="แอดมินแคนดี้🍭">แอดมินแคนดี้🍭</option>
+              <option value="แอดมินปีโป้💘">แอดมินปีโป้💘</option>
+              <option value="แอดมินฮันนี่🍯">แอดมินฮันนี่🍯</option>
+              <option value="แอดมินเอมมี่">แอดมินเอมมี่</option>
+              <option value="อื่นๆ">อื่นๆ</option>
+            </select>
+          </div>
+
+          <!-- Name and Phone Row -->
+          <div class="form-group full-width">
+            <label for="name">ชื่อลูกค้า</label>
+            <input type="text" id="name" name="name" placeholder="ชื่อลูกค้า">
+          </div>
+
+          <div class="form-group full-width">
+            <label for="address">ที่อยู่จัดส่ง / เบอร์โทรศัพท์</label>
+            <textarea id="address" name="address" placeholder="กรอกที่อยู่จัดส่ง และเบอร์โทรศัพท์..."></textarea>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="preorderItems">รายการสั่งของ</label>
+            <textarea id="preorderItems" name="preorderItems" placeholder="ระบุรายการสินค้าที่ต้องการสั่งของ..."></textarea>
+          </div>
+
+          <div class="form-group full-width">
+            <label>อัพโหลดรูปภาพ (ได้หลายรูป)</label>
+            <div class="file-upload-wrapper">
+              <input type="file" id="imageUpload" name="imageUpload" accept="image/*" multiple class="file-upload-input">
+              <div class="file-upload-content" id="upload-content">
+                <div class="file-upload-icon">📷</div>
+                <div>คลิกเลือกรูปภาพ</div>
+                <div style="font-size: 0.8em; margin-top: 5px;">เลือกได้หลายไฟล์</div>
+              </div>
+            </div>
+            <!-- Preview Grid -->
+            <div id="preview-grid" class="preview-grid"></div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="note">หมายเหตุ</label>
+            <input type="text" id="note" name="note" placeholder="ระบุเหตุเพิ่มเติม (ถ้ามี)">
+          </div>
+
+          <div class="form-group full-width" style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <input type="checkbox" id="isDeposit" name="isDeposit" style="width: 20px; height: 20px; cursor: pointer;">
+            <label for="isDeposit" style="cursor: pointer; font-size: 1em !important; margin-bottom: 0 !important; color: #64748b;">📦 ฝาก (รายการนี้จะถูกทำเครื่องหมายเป็นฝาก)</label>
+          </div>
+
+          <button type="submit" class="btn">ยืนยันการสั่งของ</button>
+        </form>
+      </div>
+
+      <!-- Right Column: Preorder List -->
+      <div class="right-column-container">
+        <h2 style="font-size: 1.5em; margin-bottom: 15px; color: var(--text-primary); text-align: center;">📦 รายการสั่งของ</h2>
+        
+        <!-- Search System -->
+        <div class="search-box" style="margin-bottom: 15px; display: flex; gap: 10px; padding: 0 5px; flex-wrap: wrap;">
+          <input type="text" id="searchName" placeholder="🔍 ค้นหาชื่อ..." onkeyup="debounceSearch()" style="flex: 1; padding: 8px; border: 1px solid var(--input-border); border-radius: 8px; min-width: 120px;">
+          <input type="date" id="searchDate" onchange="loadPreorders()" style="padding: 8px; border: 1px solid var(--input-border); border-radius: 8px;">
+          <select id="sortOrder" onchange="loadPreorders()" style="padding: 8px; border: 1px solid var(--input-border); border-radius: 8px; background: white; cursor: pointer;">
+            <option value="desc">⬇️ ใหม่ -> เก่า</option>
+            <option value="asc">⬆️ เก่า -> ใหม่</option>
+          </select>
+          <button id="exportBtn" onclick="exportToExcel()" class="btn" style="width: auto; margin-top: 0; padding: 8px 15px; font-size: 0.9em; background: #10b981;">📥 Export Excel (ส่งขนส่ง)</button>
+          <button id="clearCompletedBtn" onclick="confirmClearCompleted()" class="btn" style="width: auto; margin-top: 0; padding: 8px 15px; font-size: 0.9em; background: #ef4444;">🧹 ล้างรายการเสร็จสิ้น</button>
+        </div>
+
+        <div id="preorderList" class="preorder-list">
+          <p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">กำลังโหลดข้อมูล...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification" class="notification"></div>
+
+  <script>
+    const form = document.getElementById('preorderForm');
+    const notification = document.getElementById('notification');
+    const preorderList = document.getElementById('preorderList');
+    const rightContainer = document.querySelector('.right-column-container');
+
+    // Layout sync is now handled by CSS Grid height
+    function syncListHeight() {
+      // Logic moved to CSS for better stability
+    }
+
+    window.addEventListener('load', syncListHeight);
+    window.addEventListener('resize', syncListHeight);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(syncListHeight);
+      resizeObserver.observe(form);
+    }
+    
+    // Image Preview Logic
+    const imageUpload = document.getElementById('imageUpload');
+    const previewGrid = document.getElementById('preview-grid');
+    const uploadContent = document.getElementById('upload-content');
+    
+    let selectedFiles = [];
+
+    imageUpload.addEventListener('change', function(e) {
+      if (this.files && this.files.length > 0) {
+        // Add new files to array
+        const newFiles = Array.from(this.files);
+        selectedFiles = [...selectedFiles, ...newFiles];
+        updatePreview();
+        // Reset input so same file can be selected again if needed
+        this.value = '';
+      }
+    });
+
+    function updatePreview() {
+      previewGrid.innerHTML = '';
+      
+      selectedFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        const div = document.createElement('div');
+        div.className = 'preview-item';
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.innerHTML = '×';
+        removeBtn.onclick = () => removeFile(index);
+        
+        const img = document.createElement('img');
+        
+        reader.onload = function(e) {
+          img.src = e.target.result;
+        }
+        
+        div.appendChild(img);
+        div.appendChild(removeBtn);
+        previewGrid.appendChild(div);
+        
+        reader.readAsDataURL(file);
+      });
+      
+      // Update upload text if needed
+      if (selectedFiles.length > 0) {
+          uploadContent.innerHTML = `
+             <div class="file-upload-icon" style="color: #10b981;">✅</div>
+             <div>เลือกแล้ว ${selectedFiles.length} รูป</div>
+             <div style="font-size: 0.8em; margin-top: 5px;">คลิกเพิ่มรูปอีกได้</div>
+          `;
+      } else {
+          uploadContent.innerHTML = `
+             <div class="file-upload-icon">📷</div>
+             <div>คลิกเลือกรูปภาพ</div>
+             <div style="font-size: 0.8em; margin-top: 5px;">เลือกได้หลายไฟล์</div>
+          `;
+      }
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updatePreview();
+    }
+
+    // Show notification function
+    function showNotification(message, success = true) {
+      notification.textContent = message;
+      notification.style.background = success ? '#10b981' : '#ef4444';
+      notification.classList.add('show');
+
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Admin Selection Persistence Logic
+    const recordedBySelect = document.getElementById('recordedBy');
+
+    // Load last admin from localStorage
+    const savedAdmin = localStorage.getItem('lastAdmin');
+    if (savedAdmin) {
+      recordedBySelect.value = savedAdmin;
+    }
+
+    recordedBySelect.addEventListener('change', function () {
+      if (this.value) {
+        localStorage.setItem('lastAdmin', this.value);
+      }
+    });
+
+
+
+    // Image Compression Logic
+    function compressImage(file, maxWidth = 1200, quality = 0.8) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Compress to JPEG
+                    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    resolve(dataUrl);
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    }
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const btn = form.querySelector('.btn');
+      const originalText = btn.innerHTML;
+
+      // Gather Data
+      const address = document.getElementById('address').value.trim();
+      const nameField = document.getElementById('name').value.trim();
+      
+      // Phone extraction logic removed by user request
+      let phone = '';
+      let name = nameField;
+
+      const preorderItems = document.getElementById('preorderItems').value.trim();
+      const note = document.getElementById('note').value.trim();
+      const recordedBy = document.getElementById('recordedBy').value;
+      const isDeposit = document.getElementById('isDeposit').checked;
+
+      // Validation
+      if (!preorderItems || !address || !recordedBy) {
+        showNotification('⚠️ กรุณากรอกข้อมูลให้ครบ (ที่อยู่, รายการสินค้า, แอดมิน)', false);
+        return;
+      }
+
+      // File Validation (Size Limit 10MB)
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      for (let file of selectedFiles) {
+          if (file.size > MAX_FILE_SIZE) {
+              showNotification(`❌ รูปภาพ ${file.name} มีขนาดใหญ่เกิน 10MB`, false);
+              return;
+          }
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '⏳ กำลังบันทึก...';
+      btn.style.opacity = '0.7';
+      btn.style.cursor = 'not-allowed';
+
+      try {
+        // Process Images (Compress & Base64)
+        let imageUrls = [];
+        
+        if (selectedFiles.length > 0) {
+            const LIMIT_SIZE = 950 * 1024;
+            for (let i = 0; i < selectedFiles.length; i++) {
+                btn.innerHTML = `⏳ กำลังย่อรูป ${i + 1}/${selectedFiles.length}...`;
+                try {
+                    const base64 = await compressImage(selectedFiles[i]);
+                    if (base64) {
+                        imageUrls.push(base64);
+                        const totalSize = JSON.stringify(imageUrls).length;
+                        if (totalSize > LIMIT_SIZE) {
+                            showNotification(`⚠️ ขนาดรูปรวมใหญ่เกินไป (${(totalSize/1024).toFixed(0)}KB) กรุณาลดจำนวนรูปหรือเลือกรูปที่เล็กลง`, false);
+                            throw new Error("Total image size exceeds Firestore limit");
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error compressing:", err);
+                }
+            }
+        }
+
+        btn.innerHTML = '⏳ กำลังบันทึก...';
+
+        // Save to Firestore
+        if (typeof db !== 'undefined') {
+            await db.collection('orders').add({
+                name,
+                phone,
+                address,
+                items: preorderItems,
+                note,
+                recordedBy,
+                imageUrls: imageUrls, // Base64 Strings
+                imageUrl: imageUrls.length > 0 ? imageUrls[0] : '', // Legacy support
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                status: isDeposit ? 'deposited' : 'pending'
+            });
+            
+            showNotification('✅ บันทึกรายการสั่งของเรียบร้อย', true);
+            form.reset();
+            document.getElementById('recordedBy').value = recordedBy;
+            
+            // Reset File Selection
+            selectedFiles = [];
+            updatePreview();
+            
+        } else {
+             // Fallback for demo
+             console.log("Preorder Data:", { name, phone, address, preorderItems, note, recordedBy, imageUrlsLength: imageUrls.length });
+             showNotification('✅ บันทึกข้อมูลเรียบร้อย (Demo Mode)', true);
+             form.reset();
+             selectedFiles = [];
+             updatePreview();
+        }
+
+      } catch (error) {
+        console.error('Error:', error);
+        showNotification('❌ เกิดข้อผิดพลาด: ' + error.message, false);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    });
+
+    // Clear Completed Items
+    function confirmClearCompleted() {
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmTitle = document.getElementById('confirmTitle');
+        const confirmMessage = document.getElementById('confirmMessage');
+        const confirmOkBtn = document.getElementById('confirmOkBtn');
+        const confirmIcon = document.getElementById('confirmIcon');
+
+        confirmTitle.textContent = 'ยืนยันการล้างรายการ';
+        confirmMessage.textContent = 'คุณต้องการลบรายการที่ "เสร็จสิ้น" ทั้งหมดใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้';
+        confirmIcon.textContent = '🧹';
+        confirmOkBtn.style.background = '#ef4444';
+        
+        confirmModal.style.display = 'flex';
+
+        confirmOkBtn.onclick = async () => {
+            confirmModal.style.display = 'none';
+            await clearCompletedItems();
+        };
+    }
+
+    async function clearCompletedItems() {
+        if (typeof db === 'undefined') return;
+
+        const btn = document.getElementById('clearCompletedBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⏳ กำลังลบ...';
+
+        try {
+            const snapshot = await db.collection('orders')
+                .where('status', '==', 'completed')
+                .get();
+
+            if (snapshot.empty) {
+                showNotification('ℹ️ ไม่พบรายการที่เสร็จสิ้น', true);
+                return;
+            }
+
+            const batch = db.batch();
+            snapshot.docs.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+
+            await batch.commit();
+            showNotification(`✅ ลบรายการเสร็จสิ้นเรียบร้อย (${snapshot.size} รายการ)`, true);
+            
+            // Reload data
+            loadPreorders();
+
+        } catch (error) {
+            console.error("Error clearing completed items:", error);
+            showNotification('❌ เกิดข้อผิดพลาดในการลบข้อมูล', false);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    // Global variables
+    let currentLimit = 20;
+    let unsubscribe = null;
+    let searchTimeout = null;
+    let isLoading = false;
+
+    function debounceSearch() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        loadPreorders();
+      }, 500);
+    }
+
+    function resetSearch() {
+      document.getElementById('searchName').value = '';
+      document.getElementById('searchDate').value = '';
+      document.getElementById('sortOrder').value = 'desc';
+      currentLimit = 20; // Reset limit
+      loadPreorders();
+    }
+
+    // Load and display preorders
+    function loadPreorders() {
+      const preorderList = document.getElementById('preorderList');
+      const searchName = document.getElementById('searchName').value.trim();
+      const searchDate = document.getElementById('searchDate').value;
+      const sortOrder = document.getElementById('sortOrder').value || 'desc';
+      
+      // Stop previous listener if exists
+      if (unsubscribe) {
+        unsubscribe();
+      }
+
+      if (typeof db !== 'undefined') {
+        // Query Logic
+        let query = db.collection('orders');
+        let isSearching = false;
+
+        if (searchDate) {
+           isSearching = true;
+           const start = new Date(searchDate);
+           start.setHours(0,0,0,0);
+           const end = new Date(searchDate);
+           end.setHours(23,59,59,999);
+           
+           // Query by Date Range
+           query = query.where('timestamp', '>=', start).where('timestamp', '<=', end);
+           // Note: Cannot OrderBy timestamp desc with Range filter easily without index, so we sort client-side
+        } else if (searchName) {
+           isSearching = true;
+           // Query by Name (StartWith)
+           // Note: Case sensitive. For better search, need stored "searchKey" or similar.
+           query = query.where('name', '>=', searchName).where('name', '<=', searchName + '\uf8ff');
+        } else {
+           // Standard: All items ordered by time
+           query = query.orderBy('timestamp', sortOrder).limit(currentLimit);
+        }
+
+        if (isSearching) {
+            query = query.limit(50); // Limit search results
+        }
+
+        // Real-time listener
+        unsubscribe = query.onSnapshot((snapshot) => {
+            isLoading = false; // Reset loading state
+
+            if (snapshot.empty) {
+              preorderList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">ไม่พบรายการที่ค้นหา</p>';
+              return;
+            }
+
+            let items = [];
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              items.push({ id: doc.id, ...data });
+            });
+
+            // Client-side filtering/sorting if needed
+            if (searchDate && searchName) {
+                // If filtered by Date in Firestore, filter by Name here
+                items = items.filter(item => (item.name || '').includes(searchName));
+            }
+            
+            // If searching (especially by Name), re-sort by timestamp desc (client-side) because we lost the orderBy in query
+            if (isSearching) {
+                items.sort((a, b) => {
+                    const timeA = a.timestamp ? a.timestamp.seconds : 0;
+                    const timeB = b.timestamp ? b.timestamp.seconds : 0;
+                    return timeB - timeA;
+                });
+            }
+
+            if (items.length === 0) {
+                preorderList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">ไม่พบรายการที่ค้นหา</p>';
+                return;
+            }
+
+            let html = '';
+            items.forEach((data, index) => {
+              const date = data.timestamp ? new Date(data.timestamp.seconds * 1000).toLocaleString('th-TH') : 'เพิ่งสั่ง';
+              
+              // Handle Images (Support both old single imageUrl and new imageUrls array)
+              let images = [];
+              if (data.imageUrls && Array.isArray(data.imageUrls)) {
+                  images = data.imageUrls;
+              } else if (data.imageUrl) {
+                  images = [data.imageUrl];
+              }
+
+              let imageHtml = '';
+              if (images.length > 0) {
+                  const safeImages = JSON.stringify(images).replace(/"/g, '&quot;');
+                  imageHtml = `
+                    <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${images.map((img, i) => `
+                            <img src="${img}" alt="Preorder Image" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid #e2e8f0;" onclick="openGalleryModal(${safeImages})">
+                        `).join('')}
+                    </div>
+                  `;
+              }
+              
+              // Calculate Order Number based on Sort Order
+              // Goal: Oldest = #1, Newest = #Max
+              // If DESC (New -> Old): #Max, #Max-1...
+              // If ASC (Old -> New): #1, #2...
+              const orderNumber = sortOrder === 'asc' ? (index + 1) : (items.length - index);
+
+              // Escape quotes for onclick
+              const safeData = JSON.stringify(data).replace(/"/g, '&quot;');
+              
+              const isCompleted = data.status === 'completed';
+              const isDeposit = data.status === 'deposited';
+              const isMissing = data.status === 'missing';
+              
+              let itemStyle = '';
+              if (isCompleted) {
+                  itemStyle = 'background-color: #d1fae5; border-color: #10b981;';
+              } else if (isDeposit) {
+                  itemStyle = 'background-color: #f1f5f9; border-color: #94a3b8; filter: grayscale(1); opacity: 0.8;';
+              } else if (isMissing) {
+                  itemStyle = 'background-color: #fee2e2; border-color: #ef4444;';
+              }
+
+              const completeBtn = isCompleted ? '' : `<button class="complete-btn" onclick="markAsCompleted('${data.id}')">✅ เสร็จสิ้น</button>`;
+              const completedBadge = isCompleted ? '<span style="color: #10b981; font-weight: bold; font-size: 0.9em; margin-right: 10px;">✅ เสร็จสิ้นแล้ว</span>' : '';
+              const depositBadge = isDeposit ? '<span style="color: #64748b; font-weight: bold; font-size: 0.9em; margin-right: 10px; border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 4px; background: white;">📦 ฝากไว้</span>' : '';
+              const missingBadge = isMissing ? '<span style="color: #ef4444; font-weight: bold; font-size: 0.9em; margin-right: 10px; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 4px; background: white;">⚠️ ตกหล่น</span>' : '';
+
+              html += `
+                <div class="preorder-item" style="${itemStyle}">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-weight: bold; color: var(--primary-color); background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.9em;">#${orderNumber}</span>
+                      <span style="font-size: 0.8em; color: var(--text-secondary);">บันทึกโดย: ${data.recordedBy || '-'}</span>
+                    </div>
+                  </div>
+                  <h3 style="color: var(--primary-color); margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+                      ${data.name || 'ไม่ระบุชื่อลูกค้า'}
+                      <div>
+                        ${completeBtn}
+                        <button class="edit-btn" onclick="openEditModal(${safeData})">✏️ แก้ไข</button>
+                        <button class="delete-btn" onclick="deletePreorder('${data.id}')">🗑️ ลบ</button>
+                      </div>
+                  </h3>
+                  ${data.phone ? `<p><strong>📞 โทร:</strong> ${data.phone}</p>` : ''}
+                  <p><strong>📍 ที่อยู่:</strong> ${data.address || '-'}</p>
+                  <p><strong>📦 รายการ:</strong> <span style="color: #059669; font-weight: 600;">${data.items || '-'}</span></p>
+                  ${data.note ? `<p><strong>💬 หมายเหตุ:</strong> ${data.note}</p>` : ''}
+                  ${imageHtml}
+                  <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; gap: 10px;">
+                     ${completedBadge}
+                     ${depositBadge}
+                     ${missingBadge}
+                     
+                     <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="deposit-${data.id}" ${isDeposit ? 'checked' : ''} 
+                               onchange="toggleDeposit('${data.id}', this.checked)"
+                               style="width: 16px; height: 16px; cursor: pointer;">
+                        <label for="deposit-${data.id}" style="font-size: 0.9em; color: #64748b; cursor: pointer; margin: 0;">📦 ฝาก</label>
+                     </div>
+
+                     <div style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="missing-${data.id}" ${isMissing ? 'checked' : ''} 
+                               onchange="toggleMissing('${data.id}', this.checked)"
+                               style="width: 16px; height: 16px; cursor: pointer;">
+                        <label for="missing-${data.id}" style="font-size: 0.9em; color: #ef4444; cursor: pointer; margin: 0;">⚠️ ตกหล่น</label>
+                     </div>
+
+                     <span style="font-size: 0.8em; color: #94a3b8;">🕒 ${date}</span>
+                  </div>
+                </div>
+              `;
+            });
+            
+            // Load More Button Removed - Infinite Scroll Implemented
+            // if (!isSearching && snapshot.size === currentLimit) { ... }
+ 
+             preorderList.innerHTML = html;
+             
+             // Setup Infinite Scroll Sentinel
+             if (!isSearching && snapshot.size >= currentLimit) {
+                 setupInfiniteScroll();
+             }
+          }, (error) => {
+            isLoading = false;
+            console.error("Error fetching preorders:", error);
+            preorderList.innerHTML = '<p style="text-align: center; color: #ef4444; margin-top: 20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล (อาจต้องสร้าง Index)</p>';
+          });
+      } else {
+        // Demo mode fallback
+        preorderList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">Demo Mode: ไม่สามารถเชื่อมต่อฐานข้อมูลได้</p>';
+      }
+    }
+
+    function loadMore() {
+        if (isLoading) return;
+        isLoading = true;
+
+        // Visual feedback
+        const sentinel = document.getElementById('scroll-sentinel');
+        if (sentinel) {
+            sentinel.innerHTML = '<div style="text-align:center; color:#94a3b8; font-size:0.9em;">⏳ กำลังโหลดเพิ่มเติม...</div>';
+        }
+
+        currentLimit += 20;
+        loadPreorders();
+    }
+
+    // Infinite Scroll Implementation
+    const listObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && !isLoading) {
+             loadMore();
+        }
+    }, { 
+        root: document.getElementById('preorderList'),
+        threshold: 0.1 
+    });
+
+    function setupInfiniteScroll() {
+        const existingSentinel = document.getElementById('scroll-sentinel');
+        if (existingSentinel) existingSentinel.remove();
+
+        const sentinel = document.createElement('div');
+        sentinel.id = 'scroll-sentinel';
+        sentinel.style.height = '20px';
+        sentinel.style.marginTop = '10px';
+        preorderList.appendChild(sentinel);
+        listObserver.observe(sentinel);
+    }
+
+    async function exportToExcel() {
+        if (typeof XLSX === 'undefined') {
+            alert('⚠️ ระบบ Export Excel กำลังโหลด กรุณารอสักครู่แล้วลองใหม่');
+            return;
+        }
+
+        if (!confirm('ต้องการ Export รายการ "ที่เสร็จสิ้นแล้ว" ทั้งหมดเพื่อส่งขนส่งใช่หรือไม่?')) return;
+
+        const btn = document.getElementById('exportBtn');
+        let originalText = '📥 Export Excel (ส่งขนส่ง)';
+        
+        if (btn) {
+            originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ กำลังเตรียมไฟล์...';
+            btn.disabled = true;
+        }
+
+        try {
+            // Fetch ALL completed items from Firestore
+            // Note: Removed orderBy to avoid "Missing Index" error. Sorting is done in JS.
+            const snapshot = await db.collection('orders')
+                .where('status', '==', 'completed')
+                .get();
+
+            if (snapshot.empty) {
+                showNotification('❌ ไม่พบรายการที่เสร็จสิ้น', false);
+                return;
+            }
+
+            let dataRaw = [];
+            snapshot.forEach(doc => {
+                dataRaw.push(doc.data());
+            });
+
+            // Sort by Timestamp Descending (Newest first)
+            dataRaw.sort((a, b) => {
+                const timeA = a.timestamp ? a.timestamp.seconds : 0;
+                const timeB = b.timestamp ? b.timestamp.seconds : 0;
+                return timeB - timeA;
+            });
+
+            const data = dataRaw.map(c => ({
+                'วันที่สั่ง': c.timestamp ? new Date(c.timestamp.seconds * 1000).toLocaleString('th-TH') : '-',
+                'ชื่อผู้รับ': c.name,
+                'ที่อยู่ / เบอร์โทร': c.address || c.phone, 
+                'รายการสินค้า': c.items,
+                'หมายเหตุ': c.note || ''
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            
+            // Adjust column widths
+            const wscols = [
+                {wch: 20}, // Date
+                {wch: 20}, // Name
+                {wch: 50}, // Address
+                {wch: 40}, // Items
+                {wch: 20}  // Note
+            ];
+            ws['!cols'] = wscols;
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Shipping_List");
+            
+            // Filename with Date
+            const dateStr = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `Shipping_List_${dateStr}.xlsx`);
+            
+            showNotification(`✅ Export สำเร็จ (${data.length} รายการ)`);
+
+        } catch (error) {
+            console.error("Export Error:", error);
+            const msg = 'เกิดข้อผิดพลาดในการ Export: ' + error.message;
+            showNotification('❌ ' + msg, false);
+            alert('❌ ' + msg); // Fallback alert
+        } finally {
+            if (btn) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+    }
+
+    // Modal Logic
+    const editModal = document.getElementById('editModal');
+    const editForm = document.getElementById('editForm');
+    
+    // Confirm Modal Logic
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmTitle = document.getElementById('confirmTitle');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmIcon = document.getElementById('confirmIcon');
+    const confirmOkBtn = document.getElementById('confirmOkBtn');
+    
+    let currentConfirmAction = null;
+    
+    function showConfirmModal(title, message, icon, color, actionCallback) {
+        confirmTitle.textContent = title;
+        confirmMessage.innerHTML = message.replace(/\n/g, '<br>');
+        confirmIcon.textContent = icon;
+        confirmOkBtn.style.background = color;
+        
+        currentConfirmAction = actionCallback;
+        confirmModal.style.display = 'flex';
+    }
+    
+    function closeConfirmModal() {
+        confirmModal.style.display = 'none';
+        currentConfirmAction = null;
+    }
+    
+    confirmOkBtn.addEventListener('click', async () => {
+        if (currentConfirmAction) {
+            const btnOriginalText = confirmOkBtn.innerText;
+            confirmOkBtn.innerText = 'กำลังทำรายการ...';
+            confirmOkBtn.disabled = true;
+            
+            try {
+                await currentConfirmAction();
+                closeConfirmModal();
+            } catch (error) {
+                console.error(error);
+            } finally {
+                confirmOkBtn.innerText = btnOriginalText;
+                confirmOkBtn.disabled = false;
+            }
+        }
+    });
+    
+    // Gallery Modal Logic
+    const galleryModal = document.getElementById('galleryModal');
+    const galleryGrid = document.getElementById('galleryGrid');
+    
+    // Lightbox Logic
+    const lightboxModal = document.getElementById('lightboxModal');
+    const lightboxImage = document.getElementById('lightboxImage');
+
+    function openGalleryModal(images) {
+        if (!images || images.length === 0) return;
+        
+        galleryGrid.innerHTML = '';
+        
+        images.forEach(url => {
+            const div = document.createElement('div');
+            div.className = 'gallery-item';
+            // CHANGED: Open in Lightbox instead of window.open
+            div.onclick = () => openLightbox(url);
+            
+            const img = document.createElement('img');
+            img.src = url;
+            img.loading = 'lazy';
+            
+            div.appendChild(img);
+            galleryGrid.appendChild(div);
+        });
+        
+        galleryModal.style.display = 'flex';
+    }
+
+    function closeGalleryModal() {
+        galleryModal.style.display = 'none';
+    }
+
+    function openLightbox(url) {
+        lightboxImage.src = url;
+        lightboxModal.style.display = 'flex';
+    }
+
+    function closeLightbox() {
+        lightboxModal.style.display = 'none';
+        lightboxImage.src = '';
+    }
+
+    // Close modal when clicking outside
+    window.addEventListener('click', function(event) {
+        if (event.target == editModal) {
+            closeEditModal();
+        }
+        if (event.target == galleryModal) {
+            closeGalleryModal();
+        }
+        if (event.target == lightboxModal) {
+            closeLightbox();
+        }
+    });
+
+    function openEditModal(data) {
+        document.getElementById('editDocId').value = data.id;
+        document.getElementById('editName').value = data.name || '';
+        document.getElementById('editPhone').value = data.phone || '';
+        document.getElementById('editAddress').value = data.address || '';
+        document.getElementById('editItems').value = data.items || '';
+        document.getElementById('editNote').value = data.note || '';
+        document.getElementById('editStatus').value = data.status || 'pending';
+        
+        editModal.style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        editModal.style.display = 'none';
+    }
+
+    function markAsCompleted(docId) {
+        showConfirmModal(
+            'ยืนยันเสร็จสิ้นงาน?', 
+            'ต้องการเปลี่ยนสถานะรายการนี้เป็น "เสร็จสิ้น" ใช่หรือไม่?', 
+            '✅', 
+            '#10b981', 
+            async () => {
+                try {
+                    await db.collection('orders').doc(docId).update({
+                        status: 'completed',
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    showNotification('✅ อัปเดตสถานะเรียบร้อย', true);
+                } catch (error) {
+                    console.error('Update Error:', error);
+                    showNotification('❌ เกิดข้อผิดพลาด: ' + error.message, false);
+                    throw error;
+                }
+            }
+        );
+    }
+
+    function deletePreorder(docId) {
+        showConfirmModal(
+            'ยืนยันการลบ?', 
+            'รายการนี้จะถูกลบถาวรและไม่สามารถกู้คืนได้<br>ยืนยันที่จะลบหรือไม่?', 
+            '🗑️', 
+            '#ef4444', 
+            async () => {
+                try {
+                    await db.collection('orders').doc(docId).delete();
+                    showNotification('🗑️ ลบรายการเรียบร้อย', true);
+                } catch (error) {
+                    console.error('Delete Error:', error);
+                    showNotification('❌ เกิดข้อผิดพลาด: ' + error.message, false);
+                    throw error;
+                }
+            }
+        );
+    }
+
+    async function toggleDeposit(docId, isChecked) {
+        try {
+            const newStatus = isChecked ? 'deposited' : 'pending';
+            await db.collection('orders').doc(docId).update({
+                status: newStatus,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            // No need to reload, the real-time listener will update the UI
+        } catch (error) {
+            console.error('Toggle Deposit Error:', error);
+            showNotification('❌ เกิดข้อผิดพลาดในการอัปเดตสถานะฝาก', false);
+            // Revert checkbox state visually if failed
+            const checkbox = document.getElementById(`deposit-${docId}`);
+            if (checkbox) checkbox.checked = !isChecked;
+        }
+    }
+
+    async function toggleMissing(docId, isChecked) {
+        try {
+            const newStatus = isChecked ? 'missing' : 'pending';
+            await db.collection('orders').doc(docId).update({
+                status: newStatus,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            // No need to reload, the real-time listener will update the UI
+        } catch (error) {
+            console.error('Toggle Missing Error:', error);
+            showNotification('❌ เกิดข้อผิดพลาดในการอัปเดตสถานะตกหล่น', false);
+            // Revert checkbox state visually if failed
+            const checkbox = document.getElementById(`missing-${docId}`);
+            if (checkbox) checkbox.checked = !isChecked;
+        }
+    }
+
+    // Handle Edit Submission
+    editForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const docId = document.getElementById('editDocId').value;
+        const name = document.getElementById('editName').value;
+        const phone = document.getElementById('editPhone').value;
+        const address = document.getElementById('editAddress').value;
+        const items = document.getElementById('editItems').value;
+        const note = document.getElementById('editNote').value;
+        const status = document.getElementById('editStatus').value;
+        
+        const submitBtn = editForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = 'กำลังบันทึก...';
+        
+        try {
+            await db.collection('orders').doc(docId).update({
+                name,
+                phone,
+                address,
+                items,
+                note,
+                status,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            showNotification('✅ แก้ไขข้อมูลสำเร็จ', true);
+            closeEditModal();
+        } catch (error) {
+            console.error('Update Error:', error);
+            showNotification('❌ แก้ไขไม่สำเร็จ: ' + error.message, false);
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
+    });
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        if (event.target == editModal) {
+            closeEditModal();
+        }
+    }
+
+    // Call loadPreorders on page load
+    loadPreorders();
+  </script>
+</body>
+
+</html>

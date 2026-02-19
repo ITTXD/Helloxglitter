@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เข้าสู่ระบบ - Helloxglitter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=17">
+  <!-- Note: We do NOT include firebase-config.js here to avoid redirect loop initially, or we handle it in script -->
+  <style>
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #fff0f5 0%, #ffe4e6 100%);
+    }
+
+    .login-card {
+        background: rgba(255, 255, 255, 0.9);
+        padding: 40px;
+        border-radius: 24px;
+        box-shadow: 0 10px 30px rgba(255, 117, 140, 0.15);
+        text-align: center;
+        width: 90%;
+        max-width: 400px;
+        border: 2px solid white;
+        backdrop-filter: blur(10px);
+    }
+
+    .login-title {
+        font-family: 'Great Vibes', cursive;
+        font-size: 3.5em;
+        margin: 0 0 10px 0;
+        background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+        color: #64748b;
+        margin-bottom: 30px;
+        font-size: 0.95em;
+    }
+
+    .input-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    .input-group input {
+        width: 100%;
+        padding: 12px 15px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 1em;
+        transition: all 0.3s ease;
+        font-family: 'Prompt', sans-serif;
+        box-sizing: border-box; /* Fix padding overflow */
+    }
+
+    .input-group input:focus {
+        outline: none;
+        border-color: #ff758c;
+        box-shadow: 0 0 0 3px rgba(255, 117, 140, 0.1);
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 25px;
+        color: #64748b;
+        font-size: 0.9em;
+        justify-content: center;
+    }
+
+    .login-btn {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        font-family: 'Prompt', sans-serif;
+    }
+
+    .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 117, 140, 0.3);
+    }
+
+    .login-btn:active {
+        transform: translateY(0);
+    }
+
+    .error-msg {
+        color: #ef4444;
+        font-size: 0.9em;
+        margin-top: 15px;
+        min-height: 20px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-card">
+    <h1 class="login-title">Helloxglitter</h1>
+    <p class="subtitle">🔒 กรุณาใส่รหัสผ่านเพื่อเข้าสู่ระบบ</p>
+    
+    <form id="loginForm">
+        <div class="input-group">
+            <input type="password" id="password" placeholder="รหัสผ่าน (Password)" required autofocus>
+        </div>
+        
+        <div class="checkbox-group">
+            <input type="checkbox" id="rememberMe">
+            <label for="rememberMe" style="cursor: pointer;">จดจำฉันไว้ในเครื่องนี้</label>
+        </div>
+
+        <button type="submit" class="login-btn">เข้าสู่ระบบ</button>
+        <div id="errorMsg" class="error-msg">รหัสผ่านไม่ถูกต้อง</div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // Check if already logged in, redirect to index
+    if (localStorage.getItem('helloxglitter_auth') === 'true' || sessionStorage.getItem('helloxglitter_auth') === 'true') {
+        window.location.href = 'index.html';
+    }
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const password = document.getElementById('password').value;
+        const rememberMe = document.getElementById('rememberMe').checked;
+
+        // HARDCODED PASSWORD (TEMPORARY)
+        // You can change this to whatever you want
+        const VALID_PASSWORD = "1234"; 
+
+        if (password === VALID_PASSWORD) {
+            if (rememberMe) {
+                localStorage.setItem('helloxglitter_auth', 'true');
+            } else {
+                sessionStorage.setItem('helloxglitter_auth', 'true');
+            }
+            // Redirect back to previous page or index
+            const params = new URLSearchParams(window.location.search);
+            const next = params.get('next') || 'index.html';
+            window.location.href = next;
+        } else {
+            errorMsg.style.opacity = '1';
+            form.reset();
+            document.getElementById('password').focus();
+            
+            // Shake animation
+            const card = document.querySelector('.login-card');
+            card.style.transform = 'translateX(10px)';
+            setTimeout(() => card.style.transform = 'translateX(-10px)', 100);
+            setTimeout(() => card.style.transform = 'translateX(10px)', 200);
+            setTimeout(() => card.style.transform = 'translateX(0)', 300);
+        }
+    });
+  </script>
+</body>
+</html>

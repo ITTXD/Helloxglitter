@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initializeFirebase, addCustomer, getQueue, deleteCustomer, skipCustomer, checkCustomerStatus, updateCustomer, clearHistory, restoreCustomer } = require('./firebase');
+const { initializeFirebase, addCustomer, getQueue, deleteCustomer, skipCustomer, checkCustomerStatus, updateCustomer, clearHistory, restoreCustomer, permanentlyDeleteCustomer } = require('./firebase');
 
 const app = express();
 const PORT = 3000;
@@ -14,18 +14,35 @@ app.use(express.static(path.join(__dirname, 'public'), {
     maxAge: '0'
 }));
 
+// Ensure fresh HTML is always served (avoid CDN/browser caching HTML)
+app.use((req, res, next) => {
+    if (req.path.endsWith('.html') || req.path === '/') {
+        res.set('Cache-Control', 'no-store');
+    }
+    next();
+});
+
 // Root route to ensure index.html is served
 app.get('/', (req, res) => {
+    res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Special route for customer queue (Alias)
 app.get('/helloxglitter.queue', (req, res) => {
+    res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(__dirname, 'public', 'customer.html'));
 });
 
 // Handle typo version just in case
 app.get('/helloxglitte.queue', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(__dirname, 'public', 'customer.html'));
+});
+
+// New Alias as requested by user
+app.get('/helloxglitter.custumer.check', (req, res) => {
+    res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(__dirname, 'public', 'customer.html'));
 });
 
@@ -241,6 +258,26 @@ app.delete('/api/history', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการล้างประวัติ: ' + error.message
+        });
+    }
+});
+
+// DELETE /api/queue/:id/permanent - Permanently delete customer
+app.delete('/api/queue/:id/permanent', async (req, res) => {
+    const customerId = req.params.id;
+
+    try {
+        const result = await permanentlyDeleteCustomer(customerId);
+
+        res.json({
+            success: true,
+            message: 'ลบข้อมูลถาวรสำเร็จ',
+            result
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'เกิดข้อผิดพลาดในการลบข้อมูล: ' + error.message
         });
     }
 });

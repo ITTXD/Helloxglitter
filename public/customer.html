@@ -11,8 +11,8 @@
     <link rel="stylesheet" href="styles.css?v=16">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <style>
+  <script src="firebase-config.js?v=2"></script>
+</head>    <style>
         /* Specific Styles for Customer Page */
         @keyframes pulse-text {
             0% { opacity: 1; transform: scale(1); }
@@ -71,7 +71,7 @@
 
 <body>
     <div class="container dashboard-container">
-        <h1 style="font-family: 'Great Vibes', cursive; font-size: 3em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxglitter</h1>
+        <h1 style="font-family: 'Great Vibes', cursive; font-size: 3em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxglitter <span style="font-size: 0.6em; color: #94a3b8; margin-left: 8px;">v1.0.2</span></h1>
         <h1>🔍 ตรวจสอบสถานะคิว</h1>
         <p class="subtitle">เช็คคิวได้ง่ายๆ เพียงกรอกเบอร์โทรศัพท์เลยงับ</p>
 
@@ -393,7 +393,11 @@
                     statusHtml = `
                         <div style="text-align: center;">
                             <span style="display: block; font-size: 1.2em; font-weight: bold; color: #333; margin-bottom: 5px;">${customer.product}</span>
-                            <strong style="color: #f59e0b; font-size: 1.4em;">⏭️ ข้ามแล้ว (ไม่อยู่ที่หน้าคิว)</strong>
+                            <div style="background: #ef4444; color: white; padding: 10px; border-radius: 15px; display: inline-block; min-width: 120px; margin-bottom: 10px; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);">
+                                <span style="font-size: 0.9em; opacity: 0.9;">คิวของคุณ</span>
+                                <div style="font-size: 2.5em; font-weight: bold; line-height: 1;">${customer.id}</div>
+                            </div>
+                            <strong style="display: block; color: #f59e0b; font-size: 1.4em;">⏭️ ข้ามแล้ว (ไม่อยู่ที่หน้าคิว)</strong>
                             <div style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
                                 <img src="Catcry.jpg" alt="Catcry" style="max-width: 150px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
                             </div>

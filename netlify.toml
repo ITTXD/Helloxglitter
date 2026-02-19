@@ -1,0 +1,45 @@
+[build]
+  command = "echo 'No build command needed for static site'"
+  publish = "public"
+  functions = "netlify/functions"
+
+[dev]
+  command = "node server.js"
+  targetPort = 3000
+
+# API Routes -> Function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/api/:splat"
+  status = 200
+  force = true
+
+# Custom Aliases
+[[redirects]]
+  from = "/helloxglitter.queue"
+  to = "/customer.html"
+  status = 200
+
+[[redirects]]
+  from = "/helloxglitte.queue"
+  to = "/customer.html"
+  status = 200
+
+[[redirects]]
+  from = "/helloxglitter.custumer.check"
+  to = "/customer.html"
+  status = 200
+
+# SPA Fallback (if needed, but here we serve static files)
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200
+
+# Cache Control Headers
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, proxy-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"

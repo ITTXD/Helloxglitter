@@ -39,10 +39,7 @@
             border: 2px solid #22c55e !important;
         }
 
-        .skipped-number {
-            background: #ef4444 !important;
-            color: white !important;
-        }
+
     </style>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 </head>
@@ -137,14 +134,20 @@
                 if (result.success) {
                     if (reset) {
                         currentHistoryData = result.queue;
-                        historyList.innerHTML = ''; // Clear loading text
+                        historyList.innerHTML = '';
                     } else {
                         currentHistoryData = [...currentHistoryData, ...result.queue];
                     }
 
-                    displayHistory(result.queue, reset);
+                    const sortedData = [...currentHistoryData].sort((a, b) => {
+                        const aId = a.id != null ? a.id : Number.POSITIVE_INFINITY;
+                        const bId = b.id != null ? b.id : Number.POSITIVE_INFINITY;
+                        return aId - bId;
+                    });
 
-                    const totalLoaded = currentHistoryData.length;
+                    displayHistory(sortedData, true);
+
+                    const totalLoaded = sortedData.length;
                     historyCountEl.textContent = `${totalLoaded} รายการ`;
 
                     // Update last ID for next pagination
@@ -179,28 +182,17 @@
         }
 
         function displayHistory(newItems, reset) {
-            // Calculate starting sequential number for completed items
-            let completedCounter = 0;
-            if (!reset) {
-                const previousItems = currentHistoryData.slice(0, currentHistoryData.length - newItems.length);
-                completedCounter = previousItems.filter(c => c.status !== 'skipped').length;
-            }
-
             const html = newItems.map((customer) => {
                 const isSkipped = customer.status === 'skipped';
                 const completedDate = isSkipped ? null : (customer.completedAt ? new Date(customer.completedAt) : null);
                 const timeStr = completedDate ? completedDate.toLocaleString('th-TH') : '-';
 
-                let displayNumber = '-';
-                if (!isSkipped) {
-                    completedCounter++;
-                    displayNumber = completedCounter;
-                }
+                const displayNumber = customer.id != null ? customer.id : '-';
 
                 return `
                 <div class="queue-item ${isSkipped ? 'skipped-item' : 'completed-item'}">
                   <div class="queue-item-container">
-                    <span class="queue-number ${isSkipped ? 'skipped-number' : ''}">${isSkipped ? 'ข้าม' : displayNumber}</span>
+                    <span class="queue-number ${isSkipped ? 'skipped-number' : ''}">${displayNumber}</span>
                     <div class="queue-info">
                       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <h3>${customer.name}</h3>
@@ -238,14 +230,9 @@
 
             showNotification('⏳ กำลังเตรียมไฟล์ Excel...');
 
-            let completedCounter = 0;
             const data = currentHistoryData.map((c) => {
                 const isSkipped = c.status === 'skipped';
-                let orderNum = '-';
-                if (!isSkipped) {
-                    completedCounter++;
-                    orderNum = completedCounter;
-                }
+                const orderNum = c.id != null ? c.id : '-';
 
                 return {
                     'ลำดับ': orderNum,

@@ -13,7 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
-    <script src="firebase-config.js"></script>
+    <script src="firebase-config.js?v=2"></script>
     <style>
         .connection-badge {
             display: flex;
@@ -75,6 +75,28 @@
             100% {
                 transform: scale(0.95);
                 box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
             }
         }
 
@@ -204,9 +226,25 @@
             border: 2px solid #22c55e !important;
         }
 
-        .skipped-number {
-            background: #ef4444 !important;
-            color: white !important;
+
+
+        /* Animation for Deletion */
+        @keyframes explode {
+            0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+            30% { transform: scale(1.05); filter: brightness(1.2); }
+            100% { transform: scale(0); opacity: 0; filter: blur(10px); }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .deleting-item {
+            animation: explode 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards !important;
+            pointer-events: none;
+            background: #fee2e2 !important;
+            border-color: #ef4444 !important;
         }
 
         .section-title {
@@ -233,14 +271,22 @@
 </head>
 
 <body>
-    <div class="container dashboard-container" style="max-width: 1400px;">
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">Helloxglitter <span style="font-size: 0.85em; color: #94a3b8; margin-left: 8px;">v1.0.2</span></a>
+        <div class="nav-links">
+            <a href="index.html" class="nav-item">🏠 หน้าแรก</a>
+            <a href="preorder.html" class="nav-item">🛍️ สั่งพรี</a>
+            <a href="order.html" class="nav-item">🛍️ สั่งของ</a>
+            <a href="dashboard.html" class="nav-item active">⚙️ ระบบหลังบ้าน</a>
+        </div>
+    </nav>
+
+    <div class="container dashboard-container" style="max-width: 1400px; margin-top: 80px;">
         <h1 style="font-family: 'Great Vibes', cursive; font-size: 2.5em; font-weight: 400; text-align: center; margin-bottom: 5px; margin-top: 0; background: none; -webkit-text-fill-color: initial; color: var(--text-primary);">Helloxglitter</h1>
         <h1>📊 Dashboard - จัดการคิว</h1>
         <p class="subtitle">ระบบจัดการคิวลูกค้าอัตโนมัติ</p>
-        <div style="text-align: center; margin-bottom: 20px;">
-            <a href="/" style="color: #2563eb; text-decoration: none; font-weight: 600; font-size: 1.1em; padding: 10px 20px; background: rgba(255,255,255,0.5); border-radius: 20px;">🎫 ไปหน้าจองคิว</a>
-        </div>
-
+        
         <div class="dashboard-grid">
             <!-- Left Column: Current Queue -->
             <div class="queue-section">
@@ -311,6 +357,22 @@
 
     </div>
 
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="modal-overlay" style="z-index: 9999;">
+        <div class="modal-container" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
+                <div style="font-size: 3.5em; margin-bottom: 10px; animation: bounce 1s infinite;">🗑️</div>
+            </div>
+            <h2 style="margin: 0; color: #333; font-size: 1.5em;">ยืนยันการลบ?</h2>
+            <p style="color: #64748b; margin: 10px 0 25px;">คุณต้องการลบข้อมูลนี้ถาวรใช่หรือไม่?<br><span style="font-size: 0.85em; color: #ef4444;">(ไม่สามารถกู้คืนได้)</span></p>
+            <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0; gap: 15px;">
+                <button type="button" class="btn" onclick="closeConfirmModal()" style="background: #f1f5f9; color: #64748b; width: 100px;">ยกเลิก</button>
+                <button type="button" class="btn" onclick="executeDelete()" style="background: #ef4444; color: white; width: 100px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);">ลบถาวร</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Edit Modal -->
     <div id="editModal" class="modal-overlay">
         <div class="modal-container">
@@ -337,6 +399,7 @@
                         style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px;">
                         <option value="3 กรต 6">3 กรต 6</option>
                         <option value="6 กรต 12">6 กรต 12</option>
+                        <option value="จุ่มกิ้ฟ">จุ่มกิ้ฟ</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -423,7 +486,6 @@
             }
         }
 
-        // Display queue items
         function displayQueue(queue) {
             if (queue.length === 0) {
                 queueList.innerHTML = `
@@ -436,12 +498,10 @@
             }
 
             queueList.innerHTML = queue.map((customer, index) => {
-                // Use the persistent ID as queue number instead of array index
-                // Assuming customer.id is the sequential queue number from database
                 const queueNumber = customer.id;
                 
                 return `
-        <div class="queue-item ${getChannelClass(customer.channel)}" data-id="${customer.id}">
+        <div class="queue-item ${getChannelClass(customer.channel)}" data-id="${customer.id}" style="transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);">
           <div class="queue-item-container">
             <span class="queue-number">${queueNumber}</span>
             <div class="queue-info">
@@ -468,6 +528,7 @@
                 <button class="btn-complete" onclick="completeQueue(${customer.id})">
                   ✅ เสร็จสิ้น
                 </button>
+                <button class="btn-delete" style="background: #475569; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9em;" onclick="deleteCustomerPermanent(${customer.id})">🗑️ ลบ</button>
             </div>
           </div>
         </div>
@@ -512,10 +573,12 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    // API returns Newest First. 
-                    // To show Chronological Order (Oldest -> Newest) so numbers increment at the bottom,
-                    // we need to reverse the entire dataset initially.
-                    masterHistoryData = (result.queue || []).reverse();
+                    const rawData = result.queue || [];
+                    masterHistoryData = [...rawData].sort((a, b) => {
+                        const aId = a.id != null ? a.id : 0;
+                        const bId = b.id != null ? b.id : 0;
+                        return aId - bId; // Low to High
+                    });
                     lastSearchQuery = '';
                     renderHistoryList(masterHistoryData, true);
                 } else {
@@ -567,25 +630,15 @@
         }
 
         function displayHistory(newItems, reset) {
-            let completedCounter = 0;
-            if (!reset) {
-                // If appending, we need to know the count of existing items
-                completedCounter = historyList.children.length;
-            }
-
-            // newItems are already in correct order (sliced from masterHistoryData which is Oldest->Newest)
-            // No need to reverse here anymore.
-            
             const html = newItems.map((customer) => {
                 const isSkipped = customer.status === 'skipped';
                 const completedDate = isSkipped ? null : (customer.completedAt ? new Date(customer.completedAt) : null);
                 const timeStr = completedDate ? completedDate.toLocaleString('th-TH') : '-';
-                
-                completedCounter++;
-                const displayNumber = completedCounter;
+
+                const displayNumber = customer.id != null ? customer.id : '-';
 
                 return `
-                <div class="queue-item history-item ${isSkipped ? 'skipped-item' : 'completed-item'}">
+                <div class="queue-item history-item ${isSkipped ? 'skipped-item' : 'completed-item'}" style="animation: slideInRight 0.5s ease-out;">
                   <div class="queue-item-container">
                     <span class="queue-number ${isSkipped ? 'skipped-number' : ''}">${displayNumber}</span>
                     <div class="queue-info">
@@ -605,9 +658,10 @@
                       ${customer.note ? `<p style="color: #6366f1; font-size: 0.9em; margin-top: 5px; background: #eef2ff; padding: 5px 10px; border-radius: 8px;">📝 ${customer.note}</p>` : ''}
                       <p class="time-badge">🕒 ${isSkipped ? 'ข้ามเมื่อ: ' + (customer.skippedAt ? new Date(customer.skippedAt).toLocaleString('th-TH') : '-') : 'เสร็จเมื่อ: ' + timeStr}</p>
                     </div>
-                    <div class="action-buttons" style="margin-left: auto; display: flex; align-items: center;">
+                    <div class="action-buttons" style="margin-left: auto; display: flex; align-items: center; gap: 5px;">
                         <button class="btn-export" style="background: #ef4444; color: white; border: none; animation: none;" onclick="openEditModal(${customer.id})">✏️ แก้ไข</button>
-                        ${isSkipped ? `<button class="btn-restore" onclick="restoreQueue(${customer.id})">🔙 กลับมาแล้ว</button>` : ''}
+                        <button class="btn-restore" onclick="restoreQueue(${customer.id})">🔙 กลับมาแล้ว</button>
+                        <button onclick="openConfirmModal(${customer.id})" class="btn-delete" style="background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.9em; box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3);">🗑️ ลบ</button>
                     </div>
                   </div>
                 </div>
@@ -658,14 +712,9 @@
 
             showNotification('⏳ กำลังเตรียมไฟล์ Excel...');
 
-            let completedCounter = 0;
             const data = currentHistoryData.map((c) => {
                 const isSkipped = c.status === 'skipped';
-                let orderNum = '-';
-                if (!isSkipped) {
-                    completedCounter++;
-                    orderNum = completedCounter;
-                }
+                const orderNum = c.id != null ? c.id : '-';
 
                 return {
                     'ลำดับ': orderNum,
@@ -702,9 +751,10 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showNotification('🗑️ ' + result.message);
-                    fetchHistory(true);
-                } else {
+              showNotification('🗑️ ' + result.message);
+              // Force refresh to show re-indexed numbers
+              initHistory(); 
+            } else {
                     showNotification('❌ ' + result.message, false);
                 }
             } catch (error) {
@@ -728,13 +778,11 @@
 
                     const item = document.querySelector(`[data-id="${customerId}"]`);
                     if (item) {
-                        item.style.transition = 'all 0.3s ease';
+                        item.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
                         item.style.opacity = '0';
                         item.style.transform = 'translateX(100px)';
+                        setTimeout(() => item.remove(), 500);
                     }
-                    
-                    // Refresh history after a short delay
-                    setTimeout(() => fetchHistory(true), 1000);
                 } else {
                     showNotification('❌ ' + result.message, false);
                 }
@@ -757,7 +805,6 @@
 
                 if (result.success) {
                     showNotification('⏭️ ' + result.message, true);
-                    setTimeout(() => fetchHistory(true), 1000);
                 } else {
                     showNotification('❌ ' + result.message, false);
                 }
@@ -784,14 +831,11 @@
                     // Remove from history list visually immediately
                     const item = document.querySelector(`.history-item [onclick*="restoreQueue(${customerId})"]`)?.closest('.history-item');
                     if (item) {
-                        item.style.transition = 'all 0.3s ease';
+                        item.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
                         item.style.opacity = '0';
                         item.style.transform = 'translateX(-100px)';
-                        setTimeout(() => item.remove(), 300);
+                        setTimeout(() => item.remove(), 500);
                     }
-
-                    // Refresh history to be sure
-                    setTimeout(() => fetchHistory(true), 500);
                 } else {
                     showNotification('❌ ' + result.message, false);
                 }
@@ -801,12 +845,81 @@
             }
         }
 
+        // Confirm Modal Logic
+        const confirmModal = document.getElementById('confirmModal');
+        let deleteTargetId = null;
+
+        function openConfirmModal(id) {
+            deleteTargetId = id;
+            confirmModal.style.display = 'flex';
+        }
+
+        function closeConfirmModal() {
+            confirmModal.style.display = 'none';
+            deleteTargetId = null;
+        }
+
+        async function executeDelete() {
+            if (!deleteTargetId) return;
+            const id = deleteTargetId;
+            closeConfirmModal(); // Close first
+
+            // 1. Visual Animation First (Instant Feedback)
+            const item = document.querySelector(`[data-id="${id}"], .history-item [onclick*="openConfirmModal(${id})"]`)?.closest('.queue-item, .history-item');
+            if (item) {
+                item.classList.add('deleting-item');
+            }
+
+            // 2. Perform Delete
+            await performDeleteHistoryItem(id);
+        }
+
+        async function performDeleteHistoryItem(customerId) {
+            try {
+                const response = await fetch(`/api/queue/${customerId}/permanent`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('🗑️ ' + result.message, true);
+                    // Animation is already handled in executeDelete
+                    // If element still exists after animation (listener delay), remove it
+                     const item = document.querySelector(`.deleting-item[data-id="${customerId}"]`);
+                     if (item) {
+                         setTimeout(() => item.remove(), 500);
+                     }
+                } else {
+                    showNotification('❌ ' + result.message, false);
+                    // If failed, remove deleting class
+                    const item = document.querySelector(`.deleting-item[data-id="${customerId}"]`);
+                    if (item) item.classList.remove('deleting-item');
+                }
+            } catch (error) {
+                showNotification('❌ เกิดข้อผิดพลาดในการลบ', false);
+                console.error('Error:', error);
+                // If failed, remove deleting class
+                const item = document.querySelector(`.deleting-item[data-id="${customerId}"]`);
+                if (item) item.classList.remove('deleting-item');
+            }
+        }
+
+        // Kept for compatibility but redirects to modal
+        function deleteHistoryItem(customerId) {
+            openConfirmModal(customerId);
+        }
+
+        // Alias for waiting list delete
+        async function deleteCustomerPermanent(customerId) {
+            openConfirmModal(customerId);
+        }
+
         // Real-time System (Firebase Client SDK)
         function initRealtimeUpdates() {
             const statusBadge = document.getElementById('connectionStatus');
             const statusText = document.getElementById('statusText');
             const queueSearch = document.getElementById('queueSearch');
-            // (removed fake customers builder)
 
             // Queue Search Logic
             queueSearch.addEventListener('keyup', (e) => {
@@ -829,14 +942,13 @@
                 return;
             }
 
-            // Listen to 'queue' collection
+            // 1. Listen to Waiting Queue
             db.collection('queue')
                 .where('status', '==', 'waiting')
                 .orderBy('timestamp', 'asc')
                 .onSnapshot((snapshot) => {
                     const queue = [];
                     snapshot.forEach((doc) => {
-                        // Ensure we use the numeric ID for operations, but keep firebaseId just in case
                         const data = doc.data();
                         queue.push({ 
                             ...data, 
@@ -844,29 +956,52 @@
                         });
                     });
 
-                    // Update UI
                     statusBadge.className = 'connection-badge status-live';
                     statusText.textContent = 'Live';
                     currentQueueData = queue;
                     displayQueue(queue);
                     queueCountEl.textContent = `${queue.length} คิว`;
-
                 }, (error) => {
-                    console.error("Firebase Realtime Error:", error);
+                    console.error("Firebase Queue Listener Error:", error);
                     statusBadge.className = 'connection-badge status-error';
-                    statusText.textContent = 'Connection Error';
+                    statusText.textContent = 'Error';
+                });
+
+            // 2. Listen to History (Completed & Skipped)
+            // Note: Removing orderBy from query to avoid "Missing Index" errors on client side.
+            // We will sort in memory instead.
+            db.collection('queue')
+                .where('status', 'in', ['completed', 'skipped'])
+                .onSnapshot((snapshot) => {
+                    const history = [];
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        history.push({ 
+                            ...data, 
+                            firebaseId: doc.id 
+                        });
+                    });
+
+                    // Update master data and Sort in Memory
+                    // Sort by ID Ascending (Low to High) as requested
+                    masterHistoryData = history.sort((a, b) => {
+                         const aId = a.id != null ? a.id : 0;
+                         const bId = b.id != null ? b.id : 0;
+                         return aId - bId;
+                    });
                     
-                    if (error.code === 'permission-denied') {
-                         console.error("Check Firestore Security Rules. Public read access might be required.");
-                    }
+                    // Force refresh history display immediately
+                    // Pass true to reset pagination and show from top
+                    renderHistoryList(masterHistoryData, true);
+                }, (error) => {
+                    console.error("Firebase History Listener Error:", error);
+                    // Fallback: If listener fails, try to load once manually
+                    // (This shouldn't happen if we remove orderBy)
                 });
         }
 
         initRealtimeUpdates();
         
-        // Initial History Load
-        initHistory();
-
         // Edit Functionality
         const editModal = document.getElementById('editModal');
         const editForm = document.getElementById('editForm');
@@ -926,10 +1061,6 @@
                 if (result.success) {
                     showNotification('✅ ' + result.message);
                     closeEditModal();
-                    
-                    // Refresh history without full reset if possible, 
-                    // or just initHistory to be safe (since we removed local updates)
-                    fetchHistory(false); 
                 } else {
                     showNotification('❌ ' + result.message, false);
                 }
