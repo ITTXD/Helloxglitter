@@ -397,6 +397,7 @@ async function updateCustomer(id, data) {
         await db.collection('queue').doc(doc.id).update(data);
 
         console.log(`✅ Updated customer ID: ${id}`);
+
         return { id, ...data };
     } catch (error) {
         console.error('Error updating customer:', error.message);
@@ -540,6 +541,84 @@ async function permanentlyDeleteCustomer(id) {
     }
 }
 
+/**
+ * Swap a customer's position in the queue
+ * @param {number} id - The numeric ID of the customer to move
+ * @param {string} direction - 'up' or 'down'
+ */
+async function swapQueue(id, direction) {
+    try {
+        if (!db) throw new Error('Firebase not initialized');
+
+        // 1. Get all waiting customers sorted by timestamp (or whatever logic getQueue uses)
+        const snapshot = await db.collection('queue')
+            .where('status', '==', 'waiting')
+            .orderBy('timestamp', 'asc')
+            .get();
+
+        if (snapshot.empty) {
+            throw new Error('No waiting customers found');
+        }
+
+        const queue = [];
+        snapshot.forEach(doc => {
+            queue.push({ firebaseId: doc.id, ...doc.data() });
+        });
+
+        // 2. Find current item index
+        const index = queue.findIndex(c => c.id === parseInt(id));
+        if (index === -1) throw new Error('Customer not found in waiting queue');
+
+        // 3. Determine target index
+        let targetIndex = -1;
+        if (direction === 'up') {
+            targetIndex = index - 1;
+        } else if (direction === 'down') {
+            targetIndex = index + 1;
+        }
+
+        // Check bounds
+        if (targetIndex < 0 || targetIndex >= queue.length) {
+            console.log(`Cannot move ${direction}: Already at boundary`);
+            return { success: false, message: 'Already at boundary' };
+        }
+
+        const currentItem = queue[index];
+        const targetItem = queue[targetIndex];
+
+        // 4. Perform Swap (Timestamp AND ID)
+        await db.runTransaction(async (t) => {
+            const currentRef = db.collection('queue').doc(currentItem.firebaseId);
+            const targetRef = db.collection('queue').doc(targetItem.firebaseId);
+
+            // Swap Timestamps (to keep order in queries)
+            const ts1 = currentItem.timestamp;
+            const ts2 = targetItem.timestamp;
+            
+            // Swap IDs (to keep "Queue Number" sequential visually)
+            const id1 = currentItem.id;
+            const id2 = targetItem.id;
+
+            t.update(currentRef, {
+                timestamp: ts2,
+                id: id2
+            });
+
+            t.update(targetRef, {
+                timestamp: ts1,
+                id: id1
+            });
+        });
+
+        console.log(`✅ Swapped Queue: ID ${id} moved ${direction} (swapped with ${targetItem.id})`);
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error swapping queue:', error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     initializeFirebase,
     addCustomer,
@@ -550,5 +629,6 @@ module.exports = {
     updateCustomer,
     clearHistory,
     restoreCustomer,
-    permanentlyDeleteCustomer
+    permanentlyDeleteCustomer,
+    swapQueue
 };

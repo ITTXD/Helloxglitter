@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { initializeFirebase, addCustomer, getQueue, deleteCustomer, skipCustomer, checkCustomerStatus, updateCustomer, clearHistory, restoreCustomer, permanentlyDeleteCustomer } = require('./firebase');
+const { initializeFirebase, addCustomer, getQueue, deleteCustomer, skipCustomer, checkCustomerStatus, updateCustomer, clearHistory, restoreCustomer, permanentlyDeleteCustomer, swapQueue } = require('./firebase');
 
 const app = express();
 const PORT = 3000;
@@ -289,6 +289,37 @@ app.delete('/api/queue/:id/permanent', async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'เกิดข้อผิดพลาดในการลบข้อมูล: ' + error.message
+        });
+    }
+});
+
+// POST /api/queue/:id/move - Move customer up or down
+app.post('/api/queue/:id/move', async (req, res) => {
+    const customerId = req.params.id;
+    const { direction } = req.body; // 'up' or 'down'
+
+    if (!direction || !['up', 'down'].includes(direction)) {
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid direction. Use "up" or "down".'
+        });
+    }
+
+    try {
+        const result = await swapQueue(customerId, direction);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: `ย้ายลำดับเรียบร้อยแล้ว`
+            });
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'ไม่สามารถย้ายลำดับได้: ' + error.message
         });
     }
 });
