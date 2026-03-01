@@ -282,7 +282,17 @@
 
                 // Call API if it's a new search or we need refreshed history
                 if (!isUpdateOnly || !searchCache || searchCache.phone !== phone) {
-                    const response = await fetch(`/api/check/${phone}`);
+                    let response;
+                    // Try Netlify Functions path first (for deployed environment)
+                    try {
+                        response = await fetch(`/.netlify/functions/api/api/check/${phone}`);
+                        if (!response.ok && response.status === 404) throw new Error('Not found in functions');
+                    } catch (e) {
+                        // Fallback to local dev path
+                        console.warn("Falling back to local API path");
+                        response = await fetch(`/api/check/${phone}`);
+                    }
+                    
                     const result = await response.json();
 
                     if (result.success && result.customers.length > 0) {
