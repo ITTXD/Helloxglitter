@@ -32,7 +32,11 @@ const db = firebase.firestore();
     // Check if we are NOT on the login page
     // Note: path might be "/login.html" or just "/login" depending on server, or "/" for index
     const isLoginPage = path.includes('login.html');
-    const isCustomerPage = path.includes('customer.html');
+    const isCustomerPage = path.includes('customer.html') || 
+                          path.includes('helloxglittercustomer') || 
+                          path.includes('helloxglitter.queue') ||
+                          path.includes('helloxglitte.queue') ||
+                          path.includes('helloxglitter.custumer.check');
 
     // Debug Auth (Remove in production if needed, but helpful for debugging)
     // console.log(`Path: ${path}, Login: ${isLoginPage}, Customer: ${isCustomerPage}`);
