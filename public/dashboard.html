@@ -667,7 +667,7 @@
                       <p class="time-badge">🕒 ${isSkipped ? 'ข้ามเมื่อ: ' + (customer.skippedAt ? new Date(customer.skippedAt).toLocaleString('th-TH') : '-') : 'เสร็จเมื่อ: ' + timeStr}</p>
                     </div>
                     <div class="action-buttons" style="margin-left: auto; display: flex; align-items: center; gap: 5px;">
-                        <div style="display: flex; flex-direction: column; gap: 2px; margin-right: 5px;">
+                        <div style="display: flex; gap: 2px; margin-right: 5px;">
                             <button class="btn-move" style="background: #e2e8f0; border: none; padding: 2px 5px; border-radius: 4px; cursor: pointer; font-size: 0.8em; color: #475569;" onclick="moveItemUp(${customer.id})">ขึ้น</button>
                             <button class="btn-move" style="background: #e2e8f0; border: none; padding: 2px 5px; border-radius: 4px; cursor: pointer; font-size: 0.8em; color: #475569;" onclick="moveItemDown(${customer.id})">ลง</button>
                         </div>
