@@ -783,6 +783,47 @@
 
         // --- QUEUE ACTIONS ---
 
+        // Move Queue Items
+        async function moveItemUp(id) {
+            await moveQueueItem(id, 'up');
+        }
+
+        async function moveItemDown(id) {
+            await moveQueueItem(id, 'down');
+        }
+
+        async function moveQueueItem(id, direction) {
+            try {
+                // Try Netlify Functions path first
+                let response = await fetch(`/.netlify/functions/api/api/queue/${id}/move`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ direction })
+                });
+
+                // Fallback if 404
+                if (response.status === 404) {
+                    response = await fetch(`/api/queue/${id}/move`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ direction })
+                    });
+                }
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // showNotification('✅ ' + result.message, true);
+                    // No need to reload manually if using Firestore real-time listener
+                } else {
+                    showNotification('❌ ' + (result.message || 'Cannot move item'), false);
+                }
+            } catch (error) {
+                console.error('Error moving item:', error);
+                showNotification('❌ Error moving item', false);
+            }
+        }
+
         // Complete/Delete queue item
         async function completeQueue(customerId) {
             try {
