@@ -133,7 +133,7 @@ async function checkCustomerStatus(phone) {
             const snapshot = await db.collection('queue')
                 .where('phone_normalized', '==', normalizedSearch)
                 .orderBy('timestamp', 'desc') // Get newest first
-                .limit(5) // Limit just in case to safely bound usage
+                .limit(50) // Limit just in case to safely bound usage (increased to 50 as requested)
                 .get();
 
             if (snapshot.empty) {
@@ -158,7 +158,7 @@ async function checkCustomerStatus(phone) {
                 // Fallback: Query without orderBy
                 const fallbackSnapshot = await db.collection('queue')
                     .where('phone_normalized', '==', normalizedSearch)
-                    .limit(5)
+                    .limit(50)
                     .get();
 
                 const customers = [];
