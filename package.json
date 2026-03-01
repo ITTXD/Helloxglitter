@@ -16,6 +16,6 @@
     "express": "^5.2.1",
     "firebase-admin": "^13.6.0",
     "serverless-http": "^4.0.0",
-    "vercel": "^50.5.0"
+    "vercel": "^50.25.4"
   }
 }
