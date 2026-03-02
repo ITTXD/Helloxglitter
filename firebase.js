@@ -197,7 +197,7 @@ async function getQueue(status = 'waiting', limitNum = 100, lastDocId = null, se
             // Fetch a larger chunk of recent history (e.g., last 200 items)
             // Ideally, for a full search system, we'd need a dedicated search service (Algolia/Meilisearch)
             // But for this scale, memory filtering of recent items is sufficient and cost-effective.
-            const fetchLimit = 200; 
+            const fetchLimit = 5000; 
             
             const snapshot = await db.collection('queue')
                 .where('status', 'in', ['completed', 'skipped'])
