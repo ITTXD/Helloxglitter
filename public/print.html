@@ -632,6 +632,12 @@
         snap.forEach(d => {
           let data = d.data();
           if (src === 'preorder') {
+            // Skip wallpaper orders (patterns contain "WP")
+            if (data.patterns && Array.isArray(data.patterns)) {
+              const hasWP = data.patterns.some(p => String(p).toUpperCase().includes('WP'));
+              if (hasWP) return; // skip this document
+            }
+
             // Parse customer_info: single line "Name Phone Address"
             let name = 'ไม่ระบุ', phone = '-', address = '-';
             if (data.customer_info) {
