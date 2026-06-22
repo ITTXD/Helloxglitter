@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ปริ้นที่อยู่ - Helloxglitter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Great+Vibes&family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=17">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js?v=2"></script>
+  <script src="firebase-config-2.js?v=1"></script>
+  <style>
+    /* ===== RESET ===== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Prompt', sans-serif;
+    }
+
+    body {
+      padding-top: 70px;
+      box-sizing: border-box;
+    }
+
+    /* ===== MAIN LAYOUT ===== */
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 14px;
+      height: calc(100vh - 70px);
+      padding: 10px 16px;
+      box-sizing: border-box;
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ===== LEFT PANEL ===== */
+    .left {
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid rgba(255,255,255,0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 14px 16px 10px 16px;
+    }
+
+    /* ===== SOURCE TABS ===== */
+    .source-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 8px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      padding: 3px;
+    }
+    .source-tab {
+      flex: 1;
+      padding: 7px 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.82em;
+      font-weight: 600;
+      transition: all 0.2s;
+      background: transparent;
+      color: #64748b;
+    }
+    .source-tab:hover { color: #334155; background: rgba(255,255,255,0.5); }
+    .source-tab.active {
+      background: #fff;
+      color: #ec4899;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .source-tab .tab-count {
+      display: inline-block;
+      background: #e2e8f0;
+      color: #64748b;
+      font-size: 0.85em;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 4px;
+    }
+    .source-tab.active .tab-count {
+      background: #fce7f3;
+      color: #ec4899;
+    }
+
+    .source-badge {
+      display: inline-block;
+      font-size: 0.68em;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .source-badge.main { background: #dbeafe; color: #2563eb; }
+    .source-badge.preorder { background: #f3e8ff; color: #9333ea; }
+
+    .left .top-bar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .left .top-bar input,
+    .left .top-bar select {
+      padding: 7px 10px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.85em;
+      outline: none;
+    }
+
+    .left .top-bar input:focus { border-color: #f472b6; }
+    .left .top-bar input { flex: 1; min-width: 100px; }
+
+    .list-area {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: #f9a8d4 transparent;
+    }
+
+    .card {
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .card:hover { border-color: #f472b6; background: #fff5f9; }
+    .card.sel {
+      border-color: #ec4899;
+      background: #fdf2f8;
+      box-shadow: 0 0 0 2px rgba(236,72,153,0.15);
+    }
+    .card.sel::after {
+      content: '✓';
+      position: absolute; top: 6px; right: 8px;
+      background: #ec4899; color: #fff;
+      width: 18px; height: 18px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75em; font-weight: bold;
+    }
+    .card-name { font-weight: 600; font-size: 0.88em; color: #1e293b; }
+    .card-sub { font-size: 0.72em; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .bottom-bar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .bottom-bar .count { font-size: 0.78em; color: #94a3b8; margin-right: auto; }
+
+    .bb {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.82em;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .bb-o { background: #fff; border: 1.5px solid #e2e8f0; color: #475569; }
+    .bb-o:hover { border-color: #ec4899; color: #ec4899; }
+    .bb-p { background: linear-gradient(135deg,#ec4899,#f43f5e); color: #fff; }
+    .bb-p:hover { box-shadow: 0 3px 10px rgba(236,72,153,0.35); }
+
+    /* ===== RIGHT PANEL ===== */
+    .right {
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border: 1px solid rgba(255,255,255,0.4);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 14px 14px 10px 14px;
+    }
+
+    .right .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-weight: 700;
+      font-size: 0.95em;
+      color: #1e293b;
+    }
+
+    .preview-area {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: #f9a8d4 transparent;
+    }
+
+    .empty-msg {
+      text-align: center; color: #94a3b8; padding: 30px 10px; font-size: 0.85em;
+    }
+    .empty-msg .big { font-size: 2.5em; display: block; margin-bottom: 6px; }
+
+    /* ===== LABEL (Pure Portrait 100x150) ===== */
+    .lbl-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      flex-shrink: 0;
+    }
+    .lbl-tag { font-size: 0.7em; color: #94a3b8; }
+
+    .lbl {
+      width: 280px;
+      height: 420px;
+      position: relative;
+      flex-shrink: 0;
+      background: white;
+      border-radius: 4px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+
+    .lbl-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .lbl-inner svg {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+
+    .lbl-body {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      padding: 24px 20px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-family: 'Kanit', 'Prompt', sans-serif;
+      pointer-events: none;
+      text-align: center;
+    }
+
+    .lbl-to { font-size: 0.85em; color: #444; font-weight: 400; text-align: left; }
+    .lbl-mid {
+      flex: 1;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      text-align: center;
+    }
+    .lbl-name { font-size: 1.55em; font-weight: 700; color: #111; line-height: 1.25; margin-bottom: 12px; }
+    .lbl-addr { font-size: 1.05em; color: #222; line-height: 1.6; font-weight: 500; }
+    .lbl-phone { font-size: 1.1em; color: #222; font-weight: 600; margin-top: 8px; }
+    .lbl-items { font-size: 0.85em; color: #333; line-height: 1.4; margin-top: 20px; font-weight: 500; border-top: 1px dashed #bbb; padding-top: 8px; width: 100%; }
+    .lbl-from { font-size: 0.7em; color: #666; text-align: left; margin-top: 10px; }
+
+    /* ===== PRINT MEDIA ===== */
+    @media print {
+      @page {
+        size: 100mm 150mm;
+        margin: 0;
+      }
+
+      html, body {
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
+      }
+
+      .navbar, .left, .right .head, .lbl-tag,
+      body::before, body::after {
+        display: none !important;
+      }
+
+      .app {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        height: auto !important;
+        max-width: none !important;
+      }
+
+      .right {
+        all: unset !important;
+        display: block !important;
+      }
+
+      .preview-area {
+        display: block !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-height: none !important;
+        width: 100% !important;
+      }
+
+      .lbl-wrap {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+
+      .lbl {
+        width: 100mm !important;
+        height: 150mm !important;
+        background: white !important;
+        border-radius: 0 !important;
+        position: relative !important;
+        overflow: hidden !important;
+        box-shadow: none !important;
+      }
+
+      .lbl-inner {
+        width: 100% !important;
+        height: 100% !important;
+      }
+
+      .lbl-body {
+        padding: 8mm 6mm !important;
+      }
+
+      .lbl-to { font-size: 4.5mm !important; }
+      .lbl-name { font-size: 7.5mm !important; margin-bottom: 4mm !important; }
+      .lbl-addr { font-size: 4.8mm !important; }
+      .lbl-phone { font-size: 5mm !important; }
+      .lbl-items { font-size: 4.5mm !important; margin-top: 8mm !important; border-top: 0.6mm dashed #000 !important; }
+      .lbl-from { font-size: 3mm !important; }
+    }
+
+    @media (max-width: 850px) {
+      .app { grid-template-columns: 1fr; height: auto; }
+      .left { max-height: 50vh; }
+      body { overflow-y: auto; }
+    }
+
+    /* ===== HISTORY DRAWER ===== */
+    .drawer-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 2000;
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+      backdrop-filter: blur(4px);
+    }
+    .drawer-overlay.open { opacity: 1; visibility: visible; }
+
+    .drawer {
+      position: fixed; top: 50%; left: 50%;
+      width: 90%; max-width: 650px; height: 85vh;
+      background: #f8fafc; z-index: 2001;
+      border-radius: 24px;
+      opacity: 0; visibility: hidden;
+      transform: translate(-50%, -45%) scale(0.95);
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .drawer.open { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+    
+    .drawer-head {
+      padding: 20px; background: white; border-bottom: 1px solid #e2e8f0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .drawer-title { font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+    .drawer-close { cursor: pointer; font-size: 1.5em; color: #94a3b8; transition: 0.2s; }
+    .drawer-close:hover { color: #f43f5e; }
+
+    .drawer-content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+    
+    .history-card {
+      background: white; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 12px;
+      transition: all 0.2s; position: relative;
+    }
+    .history-card:hover { border-color: #f472b6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .history-card .date-badge { 
+      font-size: 0.7em; background: #f1f5f9; color: #64748b; 
+      padding: 2px 8px; border-radius: 4px; font-weight: 600;
+    }
+    .history-card .name { font-weight: 700; font-size: 0.9em; margin: 4px 0; color: #1e293b; }
+    .history-card .addr { font-size: 0.75em; color: #64748b; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    .btn-history {
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 8px;
+      padding: 7px 12px; cursor: pointer; font-family: inherit;
+      font-size: 0.82em; font-weight: 600; color: #475569;
+      display: flex; align-items: center; gap: 6px; transition: 0.2s;
+    }
+    .btn-history:hover { border-color: #8b5cf6; color: #8b5cf6; background: #f5f3ff; }
+
+    .bb-success { background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
+    .bb-success:hover { box-shadow: 0 3px 10px rgba(16,185,129,0.35); transform: translateY(-1px); }
+
+    .badge-printed {
+      position: absolute; top: 12px; right: 12px;
+      font-size: 0.7em; color: #059669; font-weight: 700; background: #d1fae5;
+      padding: 2px 8px; border-radius: 20px;
+    }
+
+    /* ===== PROOF IMAGES DRAWER ===== */
+    .proof-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .proof-card { background: white; border: 1.5px solid #e2e8f0; border-radius: 12px; overflow: hidden; transition: all 0.2s; cursor: pointer; }
+    .proof-card:hover { border-color: #f472b6; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .proof-card img { width: 100%; height: 160px; object-fit: cover; display: block; }
+    .proof-card .proof-info { padding: 8px 10px; font-size: 0.7em; color: #64748b; }
+    .proof-card .proof-date { font-weight: 600; color: #1e293b; }
+
+    .btn-proof {
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 8px;
+      padding: 7px 12px; cursor: pointer; font-family: inherit;
+      font-size: 0.82em; font-weight: 600; color: #475569;
+      display: flex; align-items: center; gap: 6px; transition: 0.2s;
+    }
+    .btn-proof:hover { border-color: #ec4899; color: #ec4899; background: #fdf2f8; }
+
+    /* Lightbox for proof images */
+    .lightbox-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.85); z-index: 3000;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .lightbox-overlay.open { opacity: 1; visibility: visible; }
+    .lightbox-overlay img { max-width: 90vw; max-height: 90vh; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+    .lightbox-close { position: absolute; top: 20px; right: 20px; font-size: 2em; color: white; cursor: pointer; background: rgba(0,0,0,0.3); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; }
+
+  @media (max-width: 768px) {
+    html, body {
+      overflow: auto;
+      height: auto;
+    }
+  }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="nav-brand">Helloxglitter</a>
+    <button class="nav-toggle" type="button" aria-label="เมนู">☰</button>
+    <div class="nav-links">
+      <a href="index.html" class="nav-item">🏠 หน้าแรก</a>
+      <a href="preorder.html" class="nav-item">🛍️ สั่งพรี</a>
+      <a href="order.html" class="nav-item">📦 สั่งของ</a>
+      <a href="print.html" class="nav-item active">🖨️ ปริ้นที่อยู่</a>
+      <a href="price.html" class="nav-item">💰 เช็คราคา</a>
+      <a href="summary.html" class="nav-item">📊 สรุปยอด</a>
+      <a href="dashboard.html" class="nav-item">⚙️ ระบบหลังบ้าน</a>
+    </div>
+  </nav>
+
+  <div class="app">
+    <div class="left">
+      <div class="source-tabs">
+        <button class="source-tab active" onclick="switchSource('main')" id="tab-main">
+          🏪 หลัก (Main) <span class="tab-count" id="count-main">0</span>
+        </button>
+        <button class="source-tab" onclick="switchSource('preorder')" id="tab-preorder">
+          🛍️ พรีออเดอร์ <span class="tab-count" id="count-preorder">0</span>
+        </button>
+      </div>
+      <div class="top-bar">
+        <input type="text" id="searchInput" placeholder="🔍 ค้นหาชื่อ / ที่อยู่" oninput="filterList()">
+        <input type="date" id="searchDate" onchange="filterList()">
+        <button class="btn-history" onclick="toggleDrawer(true)">⌛ ประวัติ</button>
+        <button class="btn-proof" onclick="toggleProofDrawer(true)">📸 หลักฐาน</button>
+      </div>
+      <div class="list-area" id="completedList">
+        <div style="text-align:center;color:#94a3b8;padding:20px;font-size:0.85em;">กำลังโหลดรายการ...</div>
+      </div>
+      <div class="bottom-bar">
+        <span class="count" id="selectCount">เลือก 0</span>
+        <button class="bb bb-o" onclick="selectAll()">เลือกทั้งหมด</button>
+        <button class="bb bb-o" onclick="clearAll()">ล้าง</button>
+        <button class="bb bb-p" onclick="generatePreview()">🖨️ สร้างใบปริ้น & ย้ายประวัติ</button>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="head">
+        <span>👁️ ตัวอย่างฉลาก (แนวตั้งแท้ 100×150mm)</span>
+        <button class="bb bb-p" onclick="window.print()">🖨️ พิมพ์</button>
+      </div>
+      <div class="preview-area" id="previewArea">
+        <div class="empty-msg">
+          <span class="big">🏷️</span>
+          เลือกรายการจากฝั่งซ้าย<br>แล้วกด "สร้างใบปริ้น"
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Drawer -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer(false)"></div>
+  <div class="drawer" id="historyDrawer">
+    <div class="drawer-head">
+      <div class="drawer-title">⌛ ประวัติการพิมพ์</div>
+      <div class="drawer-close" onclick="toggleDrawer(false)">×</div>
+    </div>
+    <div style="padding: 10px 20px; background: white; border-bottom: 1px solid #f1f5f9;">
+      <input type="text" id="historySearch" placeholder="🔍 ค้นหาในประวัติ..." oninput="renderHistory()" 
+             style="width: 100%; padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-family: inherit; font-size: 0.85em; outline: none;">
+    </div>
+    <div class="drawer-content" id="historyList">
+      <!-- Items go here -->
+    </div>
+  </div>
+
+  <!-- Proof Images Drawer -->
+  <div class="drawer-overlay" id="proofOverlay" onclick="toggleProofDrawer(false)"></div>
+  <div class="drawer" id="proofDrawer">
+    <div class="drawer-head">
+      <div class="drawer-title">📸 รูปหลักฐาน</div>
+      <div class="drawer-close" onclick="toggleProofDrawer(false)">×</div>
+    </div>
+    <div style="padding: 10px 20px; background: white; border-bottom: 1px solid #f1f5f9; display: flex; gap: 8px; align-items: center;">
+      <input type="date" id="proofDateFilter" onchange="renderProofImages()" style="padding: 6px 10px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-family: inherit; font-size: 0.85em; outline: none;">
+      <button class="bb bb-p" style="padding: 6px 14px; font-size: 0.8em;" onclick="printProofImages()">🖨️ พิมพ์ทั้งหมด</button>
+      <span id="proofCount" style="font-size: 0.8em; color: #94a3b8; margin-left: auto;">0 รูป</span>
+    </div>
+    <div class="drawer-content" id="proofList">
+      <!-- Images go here -->
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <img id="lightboxImg" src="" alt="Proof Image">
+  </div>
+
+  <script>
+    let allOrders = [];
+    let historyOrders = []; // isPrinted: true
+    let selectedIds = new Set();
+    let currentSource = 'main'; // 'main' or 'preorder'
+    let mainOrders = { waiting: [], history: [] };
+    let preorderOrders = { waiting: [], history: [] };
+    const SENDER = 'helloxglitter.co ที่รักลูกค้าที่สุด';
+
+    function switchSource(src) {
+      currentSource = src;
+      document.getElementById('tab-main').classList.toggle('active', src === 'main');
+      document.getElementById('tab-preorder').classList.toggle('active', src === 'preorder');
+      
+      if (src === 'main') {
+        allOrders = mainOrders.waiting;
+        historyOrders = mainOrders.history;
+      } else {
+        allOrders = preorderOrders.waiting;
+        historyOrders = preorderOrders.history;
+      }
+      
+      selectedIds.clear();
+      renderList(allOrders);
+      renderHistory();
+    }
+
+    async function loadCompletedOrders() {
+      // Load from both Firebase databases
+      await Promise.all([
+        loadFromFirebase('main', db),
+        loadFromFirebase('preorder', typeof db2 !== 'undefined' ? db2 : null)
+      ]);
+      
+      // Set initial state
+      switchSource(currentSource);
+    }
+
+    async function loadFromFirebase(src, firestore) {
+      if (!firestore) {
+        console.warn(`Firebase ${src} not available`);
+        if (src === 'main') {
+          mainOrders = { waiting: [], history: [] };
+          document.getElementById('count-main').textContent = '0';
+        } else {
+          preorderOrders = { waiting: [], history: [] };
+          document.getElementById('count-preorder').textContent = '0';
+        }
+        return;
+      }
+
+      try {
+        const snap = await firestore.collection('orders').where('status','==','completed').get();
+        const raw = [];
+        snap.forEach(d => raw.push({ id: d.id, ...d.data(), _source: src }));
+        
+        const waiting = raw.filter(o => !o.isPrinted);
+        const history = raw.filter(o => o.isPrinted);
+        
+        waiting.sort((a,b) => (b.timestamp?.seconds||0) - (a.timestamp?.seconds||0));
+        history.sort((a,b) => (b.timestamp?.seconds||0) - (a.timestamp?.seconds||0));
+        
+        if (src === 'main') {
+          mainOrders = { waiting, history };
+          document.getElementById('count-main').textContent = waiting.length;
+        } else {
+          preorderOrders = { waiting, history };
+          document.getElementById('count-preorder').textContent = waiting.length;
+        }
+      } catch(e) {
+        console.error(`Load ${src} error:`, e);
+        if (src === 'main') {
+          document.getElementById('count-main').textContent = '!';
+        } else {
+          document.getElementById('count-preorder').textContent = '!';
+        }
+      }
+    }
+
+    const CHANNEL_META = {
+      'line': { emoji: '🟢', label: 'LINE' },
+      'shopee': { emoji: '🟠', label: 'Shopee' },
+      'tiktok': { emoji: '🎵', label: 'TikTok' },
+      'lzd': { emoji: '🔵', label: 'Lazada' },
+      'fb': { emoji: '📘', label: 'Facebook' },
+      'ig': { emoji: '📸', label: 'Instagram' }
+    };
+
+    function renderList(arr) {
+      const el = document.getElementById('completedList');
+      if (!arr.length) { el.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;">ไม่พบรายการ</div>'; return; }
+      
+      const groupedByDate = {};
+      arr.forEach((data) => {
+        const dateKey = data.timestamp
+          ? new Date(data.timestamp.seconds * 1000).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })
+          : 'ไม่ระบุวันที่';
+        if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
+        groupedByDate[dateKey].push(data);
+      });
+
+      let outHtml = '';
+      Object.keys(groupedByDate).forEach(dateKey => {
+        const dayItems = groupedByDate[dateKey];
+        outHtml += `<div style="margin-bottom: 2px; margin-top: 10px; padding: 6px 12px; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 8px; font-weight: bold; font-size: 0.85em; display: flex; justify-content: space-between; align-items: center;"><span>📅 ${dateKey}</span><span style="font-size:0.85em; opacity:0.9;">${dayItems.length} รายการ</span></div>`;
+
+        dayItems.forEach((o) => {
+          let chBadge = '';
+          if (o.channelSource && CHANNEL_META[o.channelSource]) {
+            chBadge = `<span style="font-size:0.85em; background:#f1f5f9; padding:2px 6px; border-radius:4px; border:1px solid #e2e8f0; font-weight: 500; margin-left: 8px; white-space: nowrap;">${CHANNEL_META[o.channelSource].emoji} ${CHANNEL_META[o.channelSource].label}</span>`;
+          }
+
+          const srcBadge = o._source === 'preorder'
+            ? '<span class="source-badge preorder">🛍️ พรี</span>'
+            : '<span class="source-badge main">🏪 หลัก</span>';
+          
+          let itemsText = o.items ? `<div style="margin-top: 6px; font-size: 0.8em; color: #64748b; background: #f8fafc; padding: 4px 8px; border-radius: 4px; border: 1px solid #e2e8f0;">📦 ${o.items}</div>` : '';
+
+          outHtml += `<div class="card ${selectedIds.has(o.id)?'sel':''}" id="c-${o.id}" onclick="toggle('${o.id}')" style="margin-bottom: 4px;">
+            <div style="display:flex; align-items:center;">
+              <div class="card-name" style="margin-bottom: 0;">${o.name||'ไม่ระบุ'}</div>
+              ${chBadge}
+              ${srcBadge}
+            </div>
+            ${itemsText}
+            <div class="card-sub" style="margin-top:6px;">📍 ${(o.address||'-').replace(/\n/g,' ')}</div>
+          </div>`;
+        });
+      });
+
+      el.innerHTML = outHtml;
+      updCount();
+    }
+
+    function renderHistory() {
+      const el = document.getElementById('historyList');
+      const q = (document.getElementById('historySearch')?.value || '').toLowerCase();
+      
+      let filtered = historyOrders;
+      if (q) {
+        filtered = historyOrders.filter(o => 
+          (o.name||'').toLowerCase().includes(q) || 
+          (o.address||'').toLowerCase().includes(q)
+        );
+      }
+      
+      if (!filtered.length) {
+        el.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:0.85em;">ไม่พบประวัติ</div>';
+        return;
+      }
+
+      // Group by date
+      const grouped = {};
+      filtered.forEach(o => {
+        const d = o.timestamp ? new Date(o.timestamp.seconds*1000).toLocaleDateString('th-TH') : 'ไม่ระบุ';
+        if (!grouped[d]) grouped[d] = [];
+        grouped[d].push(o);
+      });
+
+      let html = '';
+      Object.keys(grouped).forEach(d => {
+        html += `<div style="font-size:0.75em; color:#94a3b8; font-weight:700; margin-top:10px; margin-bottom:4px; padding-left:4px;">📅 ${d}</div>`;
+        grouped[d].forEach(o => {
+          const srcBadge = o._source === 'preorder'
+            ? '<span class="source-badge preorder" style="position:static;">🛍️ พรี</span>'
+            : '<span class="source-badge main" style="position:static;">🏪 หลัก</span>';
+          html += `
+            <div class="history-card" onclick="reprintFromHistory('${o.id}', '${o._source||'main'}')" style="cursor:pointer; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+              <div style="flex: 1;">
+                <span class="badge-printed" style="position: static; margin-bottom: 5px;">พิมพ์แล้ว</span>
+                ${srcBadge}
+                <div class="name">${esc(o.name||'ไม่ระบุ')}</div>
+                <div class="addr">${esc((o.address||'').replace(/\n/g,' '))}</div>
+                <div style="font-size:0.7em; color:#94a3b8; margin-top:6px; display:flex; gap: 15px;">
+                  <span>📞 ${o.phone||'-'}</span>
+                  <span>📦 ${o.items||'-'}</span>
+                </div>
+              </div>
+              <button class="bb bb-p" style="padding: 5px 12px; font-size: 0.75em; white-space: nowrap; box-shadow: 0 4px 10px rgba(236,72,153,0.25);">🖨️ สั่งปริ้นอีกรอบ</button>
+            </div>
+          `;
+        });
+      });
+      el.innerHTML = html;
+    }
+
+    function toggleDrawer(open) {
+      document.getElementById('historyDrawer').classList.toggle('open', open);
+      document.getElementById('drawerOverlay').classList.toggle('open', open);
+    }
+
+    async function silentMarkAsPrinted(ids) {
+      if (!ids.length) return;
+      try {
+        // Group orders by source to batch update correctly
+        const mainIds = ids.filter(id => {
+          const o = [...allOrders, ...historyOrders].find(x => x.id === id);
+          return !o || o._source === 'main';
+        });
+        const preorderIds = ids.filter(id => {
+          const o = [...allOrders, ...historyOrders].find(x => x.id === id);
+          return o && o._source === 'preorder';
+        });
+
+        const updates = [];
+        if (mainIds.length > 0 && typeof db !== 'undefined') {
+          const batch = db.batch();
+          mainIds.forEach(id => {
+            batch.update(db.collection('orders').doc(id), { 
+              isPrinted: true,
+              printedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+          updates.push(batch.commit());
+        }
+        if (preorderIds.length > 0 && typeof db2 !== 'undefined') {
+          const batch = db2.batch();
+          preorderIds.forEach(id => {
+            batch.update(db2.collection('orders').doc(id), { 
+              isPrinted: true,
+              printedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+          updates.push(batch.commit());
+        }
+
+        await Promise.all(updates);
+        selectedIds.clear();
+        await loadCompletedOrders();
+      } catch(e) {
+        console.error('Silent Move Error:', e);
+      }
+    }
+
+    function reprintFromHistory(id, source) {
+      const src = source || 'main';
+      const list = src === 'preorder' ? preorderOrders.history : mainOrders.history;
+      const o = list.find(x => x.id === id);
+      if (!o) return;
+      selectedIds.clear();
+      selectedIds.add(id);
+      generatePreview();
+      toggleDrawer(false);
+      updCount();
+    }
+
+    function filterList() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const d = document.getElementById('searchDate').value;
+      renderList(allOrders.filter(o => {
+        const nm = !q || (o.name||'').toLowerCase().includes(q) || (o.address||'').toLowerCase().includes(q);
+        let dm = true;
+        if (d && o.timestamp) dm = new Date(o.timestamp.seconds*1000).toISOString().split('T')[0] === d;
+        return nm && dm;
+      }));
+    }
+
+    function toggle(id) {
+      selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id);
+      const c = document.getElementById('c-'+id);
+      if(c) c.classList.toggle('sel', selectedIds.has(id));
+      updCount();
+    }
+    function selectAll() { allOrders.forEach(o=>selectedIds.add(o.id)); filterList(); }
+    function clearAll() { selectedIds.clear(); filterList(); }
+    function updCount() { 
+      document.getElementById('selectCount').textContent = `เลือก ${selectedIds.size}`; 
+    }
+
+    function mkScallop(w, h) {
+      const r = 10;
+      const d2 = r * 2;
+      const cornerR = r * 1.5;
+      const innerW = w - cornerR * 2;
+      const innerH = h - cornerR * 2;
+      const nTop = Math.round(innerW / d2);
+      const nSide = Math.round(innerH / d2);
+      const stepX = innerW / nTop;
+      const stepY = innerH / nSide;
+
+      let path = `M ${cornerR},0`;
+      for (let i = 0; i < nTop; i++) path += ` Q ${cornerR + i*stepX + stepX/2},${-r*0.6} ${cornerR + (i+1)*stepX},0`;
+      path += ` Q ${w},0 ${w},${cornerR}`;
+      for (let i = 0; i < nSide; i++) path += ` Q ${w+r*0.6},${cornerR + i*stepY + stepY/2} ${w},${cornerR + (i+1)*stepY}`;
+      path += ` Q ${w},${h} ${w-cornerR},${h}`;
+      for (let i = nTop - 1; i >= 0; i--) path += ` Q ${cornerR + i*stepX + stepX/2},${h+r*0.6} ${cornerR + i*stepX},${h}`;
+      path += ` Q 0,${h} 0,${h-cornerR}`;
+      for (let i = nSide - 1; i >= 0; i--) path += ` Q ${-r*0.6},${cornerR + i*stepY + stepY/2} 0,${cornerR + i*stepY}`;
+      path += ` Q 0,0 ${cornerR},0 Z`;
+
+      return `<svg viewBox="${-r} ${-r} ${w+r*2} ${h+r*2}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <path d="${path}" fill="white" stroke="#222" stroke-width="4" stroke-linejoin="round"/>
+      </svg>`;
+    }
+
+    function generatePreview() {
+      const area = document.getElementById('previewArea');
+      if (!selectedIds.size) {
+        area.innerHTML = '<div class="empty-msg"><span class="big">⚠️</span>กรุณาเลือกรายการก่อน</div>';
+        return;
+      }
+      
+      // Merge all current and history orders from both databases
+      const everything = [...mainOrders.waiting, ...mainOrders.history, ...preorderOrders.waiting, ...preorderOrders.history];
+      const sel = everything.filter(o => selectedIds.has(o.id));
+      
+      // Identify only those that need to be marked as printed (weren't printed before)
+      const idsToMark = sel.filter(o => !o.isPrinted).map(o => o.id);
+      
+      if (!sel.length) {
+        area.innerHTML = '<div class="empty-msg"><span class="big">⚠️</span>ไม่พบข้อมูลสำหรับรายการที่เลือก</div>';
+        return;
+      }
+      
+      area.innerHTML = sel.map((o,i) => {
+        const addr = (o.address||'-').split('\n').filter(l=>l.trim()).map(l=>esc(l)).join('<br>');
+        const phone = o.phone ? esc(o.phone) : '';
+        const srcBadge = o._source === 'preorder'
+          ? '<div style="font-size:0.7em; color:#9333ea; font-weight:700; margin-bottom:4px;">🛍️ พรีออเดอร์</div>'
+          : '<div style="font-size:0.7em; color:#2563eb; font-weight:700; margin-bottom:4px;">🏪 สั่งของหลัก</div>';
+        return `<div class="lbl-wrap">
+          <span class="lbl-tag">ฉลาก ${i+1}/${sel.length}</span>
+          <div class="lbl">
+            <div class="lbl-inner">
+              ${mkScallop(300, 450)}
+              <div class="lbl-body">
+                <div class="lbl-to">ผู้รับ..</div>
+                <div class="lbl-mid">
+                  ${srcBadge}
+                  <div class="lbl-name">${esc(o.name||'ไม่ระบุ')}</div>
+                  <div class="lbl-addr">${addr}</div>
+                  ${phone ? `<div class="lbl-phone">${phone}</div>` : ''}
+                  ${o.items ? `<div class="lbl-items">รายการ: ${esc(o.items)}</div>` : ''}
+                </div>
+                <div class="lbl-from">${SENDER}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      // Auto move ONLY those that were not already in history
+      if (idsToMark.length > 0) {
+        silentMarkAsPrinted(idsToMark);
+      }
+    }
+
+    /* ===== PROOF IMAGES ===== */
+    let proofImages = [];
+
+    async function loadProofImages() {
+      if (typeof db === 'undefined') return;
+      try {
+        const snap = await db.collection('proofImages').orderBy('createdAt', 'desc').limit(100).get();
+        proofImages = [];
+        snap.forEach(d => proofImages.push({ id: d.id, ...d.data() }));
+        renderProofImages();
+      } catch(e) { console.error('loadProofImages error:', e); }
+    }
+
+    function renderProofImages() {
+      const el = document.getElementById('proofList');
+      const dateFilter = document.getElementById('proofDateFilter')?.value;
+
+      let filtered = proofImages;
+      if (dateFilter) {
+        const d = new Date(dateFilter);
+        filtered = proofImages.filter(img => {
+          if (!img.createdAt) return false;
+          const ts = img.createdAt.toDate ? img.createdAt.toDate() : new Date(img.createdAt);
+          return ts.toISOString().split('T')[0] === dateFilter;
+        });
+      }
+
+      document.getElementById('proofCount').textContent = `${filtered.length} รูป`;
+
+      if (!filtered.length) {
+        el.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:40px 20px;font-size:0.9em;">ไม่พบรูปหลักฐาน<br><span style="font-size:0.85em;">แนบรูปผ่าน AI Chat Widget จะปรากฏที่นี่</span></div>';
+        return;
+      }
+
+      el.innerHTML = `<div class="proof-grid">${filtered.map(img => {
+        const date = img.createdAt ? (img.createdAt.toDate ? img.createdAt.toDate() : new Date(img.createdAt)).toLocaleDateString('th-TH') : 'ไม่ระบุ';
+        return `
+          <div class="proof-card" onclick="openLightbox('${img.url}')">
+            <img src="${img.url}" alt="proof" loading="lazy">
+            <div class="proof-info">
+              <div class="proof-date">${date}</div>
+              <div>${img.fileName || 'ไม่มีชื่อ'}</div>
+            </div>
+          </div>
+        `;
+      }).join('')}</div>`;
+    }
+
+    function toggleProofDrawer(open) {
+      if (open) loadProofImages();
+      document.getElementById('proofDrawer').classList.toggle('open', open);
+      document.getElementById('proofOverlay').classList.toggle('open', open);
+    }
+
+    function openLightbox(url) {
+      document.getElementById('lightboxImg').src = url;
+      document.getElementById('lightbox').classList.add('open');
+    }
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('open');
+      document.getElementById('lightboxImg').src = '';
+    }
+
+    function printProofImages() {
+      const dateFilter = document.getElementById('proofDateFilter')?.value;
+      let filtered = proofImages;
+      if (dateFilter) {
+        filtered = proofImages.filter(img => {
+          if (!img.createdAt) return false;
+          const ts = img.createdAt.toDate ? img.createdAt.toDate() : new Date(img.createdAt);
+          return ts.toISOString().split('T')[0] === dateFilter;
+        });
+      }
+      if (!filtered.length) { alert('ไม่มีรูปให้พิมพ์'); return; }
+
+      const printWin = window.open('', '_blank');
+      printWin.document.write(`
+        <html><head><title>รูปหลักฐาน</title>
+        <style>body{font-family:'Prompt',sans-serif;padding:20px;text-align:center;}img{max-width:100%;max-height:90vh;margin:10px auto;display:block;page-break-after:always;}img:last-child{page-break-after:auto;}</style>
+        </head><body>
+        <h2>📸 รูปหลักฐาน ${dateFilter ? new Date(dateFilter).toLocaleDateString('th-TH') : 'ทั้งหมด'}</h2>
+        ${filtered.map(img => `<img src="${img.url}" alt="${img.fileName || ''}">`).join('')}
+        </body></html>
+      `);
+      printWin.document.close();
+      setTimeout(() => printWin.print(), 500);
+    }
+
+    function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    window.addEventListener('DOMContentLoaded', loadCompletedOrders);
+  </script>
+<script>
+(function(){
+  const navbar = document.querySelector('.navbar');
+  const toggle = document.querySelector('.nav-toggle');
+  if (!navbar || !toggle) return;
+  toggle.addEventListener('click', () => navbar.classList.toggle('open'));
+  document.querySelectorAll('.nav-links .nav-item').forEach(a => {
+    a.addEventListener('click', () => navbar.classList.remove('open'));
+  });
+  document.addEventListener('click', (e) => {
+    if (!navbar.contains(e.target)) navbar.classList.remove('open');
+  });
+})();
+</script>
+</body>
+</html>
