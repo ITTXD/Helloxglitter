@@ -619,9 +619,70 @@
       }
 
       try {
-        const snap = await firestore.collection('orders').where('status','==','completed').get();
+        let snap;
+        if (src === 'preorder') {
+          // ดึงข้อมูล orders ของระบบ preorder
+          // ถ้าต้องการกรอง status ให้ใส่ .where('status', '==', 3) หรือตามที่ต้องการได้เลยครับ
+          snap = await firestore.collection('orders').get();
+        } else {
+          snap = await firestore.collection('orders').where('status','==','completed').get();
+        }
+        
         const raw = [];
-        snap.forEach(d => raw.push({ id: d.id, ...d.data(), _source: src }));
+        snap.forEach(d => {
+          let data = d.data();
+          if (src === 'preorder') {
+            // Parse customer_info: single line "Name Phone Address"
+            let name = 'ไม่ระบุ', phone = '-', address = '-';
+            if (data.customer_info) {
+              const info = data.customer_info.trim();
+              const phoneMatch = info.match(/(\d{9,10})/);
+              if (phoneMatch) {
+                const phoneIdx = info.indexOf(phoneMatch[1]);
+                name = info.substring(0, phoneIdx).trim() || 'ไม่ระบุ';
+                phone = phoneMatch[1];
+                address = info.substring(phoneIdx + phoneMatch[1].length).trim() || '-';
+              } else {
+                name = info;
+              }
+            }
+            
+            // Parse items from patterns (array) + pattern_qtys (map)
+            let itemsStr = '';
+            if (data.patterns && Array.isArray(data.patterns)) {
+              const qtys = data.pattern_qtys || {};
+              itemsStr = data.patterns.map(p => {
+                const q = qtys[p] || 1;
+                return `${p} (x${q})`;
+              }).join(', ');
+            }
+            if (data.qty) {
+              itemsStr += (itemsStr ? ' ' : '') + `[${data.qty} ชิ้น]`;
+            }
+
+            let ts = data.created_at || data.timestamp;
+            if (typeof ts === 'string') {
+              ts = { seconds: Math.floor(new Date(ts).getTime() / 1000) };
+            } else if (!ts) {
+              ts = { seconds: Math.floor(Date.now() / 1000) };
+            }
+
+            raw.push({
+              id: d.id,
+              name: name,
+              phone: phone,
+              address: address,
+              items: itemsStr || 'ไม่ระบุสินค้า',
+              isPrinted: data.isPrinted || false,
+              timestamp: ts,
+              _source: src,
+              total_price: data.total_price,
+              shipping_cost: data.shipping_cost
+            });
+          } else {
+            raw.push({ id: d.id, ...data, _source: src });
+          }
+        });
         
         const waiting = raw.filter(o => !o.isPrinted);
         const history = raw.filter(o => o.isPrinted);
@@ -638,6 +699,9 @@
         }
       } catch(e) {
         console.error(`Load ${src} error:`, e);
+        if (src === 'preorder') {
+          alert('เกิดข้อผิดพลาดในการดึงข้อมูล Preorder: ' + e.message);
+        }
         if (src === 'main') {
           document.getElementById('count-main').textContent = '!';
         } else {
