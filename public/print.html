@@ -1032,7 +1032,6 @@
       const noteOrders = sel.filter(o => notePrintIds.has(o.id) && o.note);
       if (noteOrders.length > 0) {
         const noteHtml = noteOrders.map((o, i) => {
-          const phone = o.phone ? esc(o.phone) : '';
           return `<div class="lbl-wrap">
             <span class="lbl-tag">📝 Note ${i+1}/${noteOrders.length}</span>
             <div class="lbl">
@@ -1041,9 +1040,7 @@
                 <div class="lbl-body">
                   <div class="lbl-mid" style="justify-content: flex-start; padding-top: 10px;">
                     <div style="font-size:0.8em; color:#ea580c; font-weight:700; margin-bottom:10px; background:#fff7ed; padding:4px 12px; border-radius:6px; border:1px solid #fed7aa;">📝 NOTE จากลูกค้า</div>
-                    <div class="lbl-name" style="font-size:1.2em; margin-bottom:8px;">${esc(o.name||'ไม่ระบุ')}</div>
-                    ${phone ? `<div class="lbl-phone" style="margin-bottom:10px;">📞 ${phone}</div>` : ''}
-                    <div style="font-size:0.95em; color:#111; line-height:1.6; text-align:left; width:100%; border-top:2px dashed #ea580c; padding-top:10px; margin-top:4px; white-space: pre-wrap;">${esc(o.note)}</div>
+                    <div style="font-size:0.95em; color:#111; line-height:1.6; text-align:left; width:100%; border-top:2px dashed #ea580c; padding-top:10px; white-space: pre-wrap;">${esc(o.note)}</div>
                   </div>
                 </div>
               </div>
