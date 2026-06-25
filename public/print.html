@@ -850,9 +850,11 @@
           const srcBadge = o._source === 'preorder'
             ? '<span class="source-badge preorder" style="position:static;">🛍️ พรี</span>'
             : '<span class="source-badge main" style="position:static;">🏪 หลัก</span>';
+          const hasNote = o._source === 'preorder' && o.note && o.noteStatus === 'on';
+          const notePreview = hasNote ? `<div style="font-size:0.7em; color:#ea580c; background:#fff7ed; border:1px solid #fed7aa; border-radius:4px; padding:3px 6px; margin-top:4px;">📝 ${esc(o.note).substring(0, 80)}${o.note.length > 80 ? '...' : ''}</div>` : '';
           html += `
-            <div class="history-card" onclick="reprintFromHistory('${o.id}', '${o._source||'main'}')" style="cursor:pointer; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
-              <div style="flex: 1;">
+            <div class="history-card" style="cursor:pointer; display: flex; justify-content: space-between; align-items: flex-start; gap: 15px;">
+              <div style="flex: 1;" onclick="reprintFromHistory('${o.id}', '${o._source||'main'}')">
                 <span class="badge-printed" style="position: static; margin-bottom: 5px;">พิมพ์แล้ว</span>
                 ${srcBadge}
                 <div class="name">${esc(o.name||'ไม่ระบุ')}</div>
@@ -861,8 +863,12 @@
                   <span>📞 ${o.phone||'-'}</span>
                   <span>📦 ${o.items||'-'}</span>
                 </div>
+                ${notePreview}
               </div>
-              <button class="bb bb-p" style="padding: 5px 12px; font-size: 0.75em; white-space: nowrap; box-shadow: 0 4px 10px rgba(236,72,153,0.25);">🖨️ สั่งปริ้นอีกรอบ</button>
+              <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+                <button class="bb bb-p" onclick="reprintFromHistory('${o.id}', '${o._source||'main'}')" style="padding: 5px 12px; font-size: 0.75em; white-space: nowrap; box-shadow: 0 4px 10px rgba(236,72,153,0.25);">🖨️ สั่งปริ้นอีกรอบ</button>
+                ${hasNote ? `<button class="bb bb-note" onclick="reprintNoteFromHistory('${o.id}', '${o._source||'main'}')" style="padding: 5px 12px; font-size: 0.75em; white-space: nowrap; background:#fff7ed; border:1.5px solid #ea580c; color:#ea580c; border-radius:8px; cursor:pointer; font-family:inherit; font-weight:600;">📝 พิมพ์ Note</button>` : ''}
+              </div>
             </div>
           `;
         });
@@ -924,10 +930,37 @@
       const o = list.find(x => x.id === id);
       if (!o) return;
       selectedIds.clear();
+      notePrintIds.clear();
       selectedIds.add(id);
       generatePreview();
       toggleDrawer(false);
       updCount();
+    }
+
+    function reprintNoteFromHistory(id, source) {
+      const src = source || 'main';
+      const list = src === 'preorder' ? preorderOrders.history : mainOrders.history;
+      const o = list.find(x => x.id === id);
+      if (!o || !o.note) return;
+      selectedIds.clear();
+      notePrintIds.clear();
+      notePrintIds.add(id);
+      const area = document.getElementById('previewArea');
+      area.innerHTML = `<div class="lbl-wrap">
+        <span class="lbl-tag">📝 Note</span>
+        <div class="lbl">
+          <div class="lbl-inner">
+            ${mkScallop(300, 450)}
+            <div class="lbl-body">
+              <div class="lbl-mid" style="justify-content: flex-start; padding-top: 10px;">
+                <div style="font-size:0.8em; color:#ea580c; font-weight:700; margin-bottom:10px; background:#fff7ed; padding:4px 12px; border-radius:6px; border:1px solid #fed7aa;">📝 NOTE จากลูกค้า</div>
+                <div style="font-size:0.95em; color:#111; line-height:1.6; text-align:left; width:100%; border-top:2px dashed #ea580c; padding-top:10px; white-space: pre-wrap;">${esc(o.note)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+      toggleDrawer(false);
     }
 
     function filterList() {
