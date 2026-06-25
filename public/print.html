@@ -109,6 +109,32 @@
     .source-badge.main { background: #dbeafe; color: #2563eb; }
     .source-badge.preorder { background: #f3e8ff; color: #9333ea; }
 
+    .note-badge {
+      font-size: 0.75em;
+      color: #ea580c;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 6px;
+      padding: 4px 8px;
+      margin-top: 6px;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .note-badge::before { content: '📝 '; }
+
+    .note-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-size: 0.78em;
+      color: #7c3aed;
+      font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    .note-check input { width: 16px; height: 16px; cursor: pointer; accent-color: #7c3aed; }
+
     .left .top-bar {
       display: flex;
       gap: 6px;
@@ -574,6 +600,7 @@
     let currentSource = 'main'; // 'main' or 'preorder'
     let mainOrders = { waiting: [], history: [] };
     let preorderOrders = { waiting: [], history: [] };
+    let notePrintIds = new Set(); // track which orders to print note for
     const SENDER = 'helloxglitter.co ที่รักลูกค้าที่สุด';
 
     function switchSource(src) {
@@ -638,10 +665,15 @@
               if (hasWP) return; // skip this document
             }
 
-            // Parse customer_info: single line "Name Phone Address"
+            // Parse customer_info: "Name Phone Address" or "Name Address" or email
             let name = 'ไม่ระบุ', phone = '-', address = '-';
             if (data.customer_info) {
               const info = data.customer_info.trim();
+
+              // Skip email-only entries (wallpaper orders)
+              if (info.includes('@')) return;
+
+              // Try to find phone number (9-10 consecutive digits)
               const phoneMatch = info.match(/(\d{9,10})/);
               if (phoneMatch) {
                 const phoneIdx = info.indexOf(phoneMatch[1]);
@@ -649,9 +681,20 @@
                 phone = phoneMatch[1];
                 address = info.substring(phoneIdx + phoneMatch[1].length).trim() || '-';
               } else {
-                name = info;
+                // No phone — try to find address keywords to split name from address
+                const addrKeywords = /(?:บ้านเลขที่|เลขที่|หมู่ที่|ม\.|หมู่|ซ\.|ซอย|ถ\.|ถนน|ต\.|ตำบล|เทศบาล|อ\.|อำเภอ|แขวง|เขต|จ\.|จังหวัด|\d{5})/;
+                const m = info.match(addrKeywords);
+                if (m && m.index > 0) {
+                  name = info.substring(0, m.index).trim() || 'ไม่ระบุ';
+                  address = info.substring(m.index).trim() || '-';
+                } else {
+                  name = info;
+                }
               }
             }
+
+            // Skip if no valid phone (can't ship)
+            // Actually, keep all — user wants to see them
             
             // Parse items from patterns (array) + pattern_qtys (map)
             let itemsStr = '';
@@ -679,6 +722,8 @@
               phone: phone,
               address: address,
               items: itemsStr || 'ไม่ระบุสินค้า',
+              note: data.note || '',
+              noteStatus: data.note_status || 'off',
               isPrinted: data.isPrinted || false,
               timestamp: ts,
               _source: src,
@@ -763,6 +808,8 @@
             </div>
             ${itemsText}
             <div class="card-sub" style="margin-top:6px;">📍 ${(o.address||'-').replace(/\n/g,' ')}</div>
+            ${o._source === 'preorder' && o.note && o.noteStatus === 'on' ? `<div class="note-badge">${esc(o.note)}</div>` : ''}
+            ${o._source === 'preorder' && o.note && o.noteStatus === 'on' ? `<label class="note-check" onclick="event.stopPropagation()"><input type="checkbox" id="np-${o.id}" ${notePrintIds.has(o.id)?'checked':''} onchange="toggleNotePrint('${o.id}', this.checked)"> ☑️ พิมพ์ note แยก</label>` : ''}
           </div>`;
         });
       });
@@ -901,9 +948,12 @@
       updCount();
     }
     function selectAll() { allOrders.forEach(o=>selectedIds.add(o.id)); filterList(); }
-    function clearAll() { selectedIds.clear(); filterList(); }
+    function clearAll() { selectedIds.clear(); notePrintIds.clear(); filterList(); }
     function updCount() { 
       document.getElementById('selectCount').textContent = `เลือก ${selectedIds.size}`; 
+    }
+    function toggleNotePrint(id, checked) {
+      if (checked) { notePrintIds.add(id); } else { notePrintIds.delete(id); }
     }
 
     function mkScallop(w, h) {
@@ -977,6 +1027,31 @@
           </div>
         </div>`;
       }).join('');
+
+      // Generate separate note labels for orders with checkbox checked
+      const noteOrders = sel.filter(o => notePrintIds.has(o.id) && o.note);
+      if (noteOrders.length > 0) {
+        const noteHtml = noteOrders.map((o, i) => {
+          const phone = o.phone ? esc(o.phone) : '';
+          return `<div class="lbl-wrap">
+            <span class="lbl-tag">📝 Note ${i+1}/${noteOrders.length}</span>
+            <div class="lbl">
+              <div class="lbl-inner">
+                ${mkScallop(300, 450)}
+                <div class="lbl-body">
+                  <div class="lbl-mid" style="justify-content: flex-start; padding-top: 10px;">
+                    <div style="font-size:0.8em; color:#ea580c; font-weight:700; margin-bottom:10px; background:#fff7ed; padding:4px 12px; border-radius:6px; border:1px solid #fed7aa;">📝 NOTE จากลูกค้า</div>
+                    <div class="lbl-name" style="font-size:1.2em; margin-bottom:8px;">${esc(o.name||'ไม่ระบุ')}</div>
+                    ${phone ? `<div class="lbl-phone" style="margin-bottom:10px;">📞 ${phone}</div>` : ''}
+                    <div style="font-size:0.95em; color:#111; line-height:1.6; text-align:left; width:100%; border-top:2px dashed #ea580c; padding-top:10px; margin-top:4px; white-space: pre-wrap;">${esc(o.note)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+        area.innerHTML += noteHtml;
+      }
 
       // Auto move ONLY those that were not already in history
       if (idsToMark.length > 0) {
