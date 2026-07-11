@@ -648,9 +648,8 @@
       try {
         let snap;
         if (src === 'preorder') {
-          // ดึงข้อมูล orders ของระบบ preorder
-          // ถ้าต้องการกรอง status ให้ใส่ .where('status', '==', 3) หรือตามที่ต้องการได้เลยครับ
-          snap = await firestore.collection('orders').get();
+          // ดึงข้อมูล orders ของระบบ preorder (เฉพาะ status == 2)
+          snap = await firestore.collection('orders').where('status', '==', 2).get();
         } else {
           snap = await firestore.collection('orders').where('status','==','completed').get();
         }
