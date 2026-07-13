@@ -304,6 +304,7 @@
       font-family: 'Kanit', 'Prompt', sans-serif;
       pointer-events: none;
       text-align: center;
+      overflow: hidden;
     }
 
     .lbl-to { font-size: 0.85em; color: #444; font-weight: 400; text-align: left; }
@@ -314,7 +315,7 @@
       text-align: center;
     }
     .lbl-name { font-size: 1.55em; font-weight: 700; color: #111; line-height: 1.25; margin-bottom: 12px; }
-    .lbl-addr { font-size: 1.05em; color: #222; line-height: 1.6; font-weight: 500; }
+    .lbl-addr { font-size: 1.05em; color: #222; line-height: 1.6; font-weight: 500; word-break: break-word; }
     .lbl-phone { font-size: 1.1em; color: #222; font-weight: 600; margin-top: 8px; }
     .lbl-items { font-size: 0.85em; color: #333; line-height: 1.4; margin-top: 20px; font-weight: 500; border-top: 1px dashed #bbb; padding-top: 8px; width: 100%; }
     .lbl-from { font-size: 0.7em; color: #666; text-align: left; margin-top: 10px; }
@@ -388,6 +389,7 @@
 
       .lbl-body {
         padding: 8mm 6mm !important;
+        overflow: hidden !important;
       }
 
       .lbl-to { font-size: 4.5mm !important; }
@@ -612,6 +614,22 @@
     let preorderRaw = { waiting: [], history: [] }; // raw data before status filter
     let notePrintIds = new Set(); // track which orders to print note for
     const SENDER = 'helloxglitter.co ที่รักลูกค้าที่สุด';
+
+    // Auto-fit label font sizes based on content length
+    function calcLabelFontSizes(addr, items, name) {
+      const totalLen = (addr || '').length + (items || '').length + (name || '').length;
+      let addr, items, name, phone;
+      if (totalLen > 200) {
+        addr = '3mm'; items = '3mm'; name = '5.5mm'; phone = '3.5mm';
+      } else if (totalLen > 130) {
+        addr = '3.5mm'; items = '3.5mm'; name = '6.5mm'; phone = '4mm';
+      } else if (totalLen > 80) {
+        addr = '4mm'; items = '4mm'; name = '7mm'; phone = '4.5mm';
+      } else {
+        addr = '4.8mm'; items = '4.5mm'; name = '7.5mm'; phone = '5mm';
+      }
+      return { addr, items, name, phone };
+    }
 
     function switchSource(src) {
       currentSource = src;
@@ -1083,6 +1101,7 @@
         const srcBadge = o._source === 'preorder'
           ? '<div style="font-size:0.7em; color:#9333ea; font-weight:700; margin-bottom:4px;">🛍️ พรีออเดอร์</div>'
           : '<div style="font-size:0.7em; color:#2563eb; font-weight:700; margin-bottom:4px;">🏪 สั่งของหลัก</div>';
+        const fs = calcLabelFontSizes(o.address, o.items, o.name);
         return `<div class="lbl-wrap">
           <span class="lbl-tag">ฉลาก ${i+1}/${sel.length}</span>
           <div class="lbl">
@@ -1092,10 +1111,10 @@
                 <div class="lbl-to">ผู้รับ..</div>
                 <div class="lbl-mid">
                   ${srcBadge}
-                  <div class="lbl-name">${esc(o.name||'ไม่ระบุ')}</div>
-                  <div class="lbl-addr">${addr}</div>
-                  ${phone ? `<div class="lbl-phone">${phone}</div>` : ''}
-                  ${o.items ? `<div class="lbl-items">รายการ: ${esc(o.items)}</div>` : ''}
+                  <div class="lbl-name" style="font-size:${fs.name} !important;">${esc(o.name||'ไม่ระบุ')}</div>
+                  <div class="lbl-addr" style="font-size:${fs.addr} !important;word-break:break-word;">${addr}</div>
+                  ${phone ? `<div class="lbl-phone" style="font-size:${fs.phone} !important;">${phone}</div>` : ''}
+                  ${o.items ? `<div class="lbl-items" style="font-size:${fs.items} !important;">รายการ: ${esc(o.items)}</div>` : ''}
                 </div>
                 <div class="lbl-from">${SENDER}</div>
               </div>
