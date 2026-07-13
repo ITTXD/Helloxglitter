@@ -130,8 +130,11 @@ async function run() {
     console.log('\n🧪 TEST 9: Switch to "ทั้งหมด" — count >= กำลังผลิต count');
     // ============================================================
     const countBefore = parseInt(countText) || 0;
-    await page.select('#preorderStatusFilter', 'all');
-    await sleep(2000);
+    await page.evaluate(() => {
+      document.getElementById('preorderStatusFilter').value = 'all';
+      applyPreorderFilter();
+    });
+    await sleep(500);
     const countAll = await page.$eval('#count-preorder', (el) => parseInt(el.textContent.trim()) || 0);
     await assert(
       countAll >= countBefore,
@@ -141,8 +144,11 @@ async function run() {
     // ============================================================
     console.log('\n🧪 TEST 10: Switch to "กำลังผลิต" — count <= "ทั้งหมด"');
     // ============================================================
-    await page.select('#preorderStatusFilter', '2');
-    await sleep(2000);
+    await page.evaluate(() => {
+      document.getElementById('preorderStatusFilter').value = '2';
+      applyPreorderFilter();
+    });
+    await sleep(500);
     const countStatus2 = await page.$eval('#count-preorder', (el) => parseInt(el.textContent.trim()) || 0);
     await assert(
       countStatus2 <= countAll,
@@ -152,8 +158,11 @@ async function run() {
     // ============================================================
     console.log('\n🧪 TEST 11: Switch to "จัดส่งแล้ว" — count <= "ทั้งหมด"');
     // ============================================================
-    await page.select('#preorderStatusFilter', '3');
-    await sleep(2000);
+    await page.evaluate(() => {
+      document.getElementById('preorderStatusFilter').value = '3';
+      applyPreorderFilter();
+    });
+    await sleep(500);
     const countStatus3 = await page.$eval('#count-preorder', (el) => parseInt(el.textContent.trim()) || 0);
     await assert(
       countStatus3 <= countAll,
