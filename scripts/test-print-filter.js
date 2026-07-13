@@ -104,7 +104,14 @@ async function run() {
     // ============================================================
     console.log('\n🧪 TEST 7: Preorder data loads (default filter = กำลังผลิต)');
     // ============================================================
-    await sleep(5000);
+    // Wait for Firestore data to finish loading (not "...")
+    await page.waitForFunction(() => {
+      const el = document.getElementById('count-preorder');
+      if (!el) return false;
+      const t = el.textContent.trim();
+      return t !== '...' && t !== '…';
+    }, { timeout: 30000 });
+    await sleep(1000); // extra settle time
     const countText = await page.$eval('#count-preorder', (el) => el.textContent.trim());
     await assert(countText !== '...', `Preorder count loaded: ${countText}`);
 
