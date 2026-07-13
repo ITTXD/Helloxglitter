@@ -651,7 +651,7 @@
       }
       allOrders = preorderOrders.waiting;
       historyOrders = preorderOrders.history;
-      document.getElementById('count-preorder').textContent = preorderOrders.waiting.length + preorderOrders.history.length;
+      document.getElementById('count-preorder').textContent = preorderOrders.waiting.length;
       selectedIds.clear();
       renderList(allOrders);
       renderHistory();
