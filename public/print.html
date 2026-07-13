@@ -651,7 +651,7 @@
       }
       allOrders = preorderOrders.waiting;
       historyOrders = preorderOrders.history;
-      document.getElementById('count-preorder').textContent = preorderOrders.waiting.length;
+      document.getElementById('count-preorder').textContent = preorderOrders.waiting.length + preorderOrders.history.length;
       selectedIds.clear();
       renderList(allOrders);
       renderHistory();
@@ -762,7 +762,7 @@
               isPrinted: data.isPrinted || false,
               timestamp: ts,
               _source: src,
-              _rawStatus: data.status !== undefined ? data.status : null,
+              _rawStatus: data.status !== undefined ? Number(data.status) : null,
               total_price: data.total_price,
               shipping_cost: data.shipping_cost
             });
