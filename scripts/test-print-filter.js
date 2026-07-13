@@ -89,8 +89,11 @@ async function run() {
     );
     const hasAllOption = options.some(o => o.value === 'all' && o.text.includes('ทั้งหมด'));
     const hasStatus2Option = options.some(o => o.value === '2' && o.text.includes('Status 2'));
+    const hasStatus3Option = options.some(o => o.value === '3' && o.text.includes('Status 3'));
     await assert(hasAllOption, `Dropdown has "ทั้งหมด" option`);
     await assert(hasStatus2Option, `Dropdown has "Status 2" option`);
+    await assert(hasStatus3Option, `Dropdown has "Status 3" option`);
+    await assert(options.length === 3, `Dropdown has exactly 3 options (got ${options.length})`);
 
     // ============================================================
     console.log('\n🧪 TEST 6: Default selected value is "2"');
@@ -145,7 +148,26 @@ async function run() {
     );
 
     // ============================================================
-    console.log('\n🧪 TEST 11: No hardcoded Firestore status filter in source');
+    console.log('\n🧪 TEST 11: Switch to "Status 3" — count changes');
+    // ============================================================
+    await page.select('#preorderStatusFilter', '3');
+    await sleep(2000);
+    const countStatus3 = await page.$eval('#count-preorder', (el) => parseInt(el.textContent.trim()) || 0);
+    await assert(
+      countStatus3 <= countAll,
+      `Count "Status 3" (${countStatus3}) <= "ทั้งหมด" (${countAll})`
+    );
+
+    // ============================================================
+    console.log('\n🧪 TEST 12: Status 2 + Status 3 <= "ทั้งหมด"');
+    // ============================================================
+    await assert(
+      countStatus2 + countStatus3 <= countAll,
+      `Status 2 (${countStatus2}) + Status 3 (${countStatus3}) <= "ทั้งหมด" (${countAll})`
+    );
+
+    // ============================================================
+    console.log('\n🧪 TEST 13: No hardcoded Firestore status filter in source');
     // ============================================================
     const noHardcodedFilter = await page.evaluate(() => {
       const scripts = document.querySelectorAll('script');
@@ -159,7 +181,7 @@ async function run() {
     await assert(noHardcodedFilter, 'No hardcoded .where("status", "==", 2) in source');
 
     // ============================================================
-    console.log('\n🧪 TEST 12: applyPreorderFilter function exists');
+    console.log('\n🧪 TEST 14: applyPreorderFilter function exists');
     // ============================================================
     const hasFilterFn = await page.evaluate(() => {
       return typeof window.applyPreorderFilter === 'function';
