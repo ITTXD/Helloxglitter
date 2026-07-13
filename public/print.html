@@ -651,7 +651,13 @@
       }
       allOrders = preorderOrders.waiting;
       historyOrders = preorderOrders.history;
-      document.getElementById('count-preorder').textContent = preorderOrders.waiting.length;
+      // Status 3 (จัดส่งแล้ว) shows total all orders (both waiting + printed in main list)
+      if (filter === '3') {
+        allOrders = [...preorderOrders.waiting, ...preorderOrders.history];
+        historyOrders = [];
+      }
+      document.getElementById('count-preorder').textContent = 
+        filter === '3' ? preorderOrders.waiting.length + preorderOrders.history.length : preorderOrders.waiting.length;
       selectedIds.clear();
       renderList(allOrders);
       renderHistory();
