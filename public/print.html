@@ -783,6 +783,7 @@
         } else {
           preorderRaw = { waiting, history };
           applyPreorderFilter();
+          window._preorderDb2Loaded = true; // signal tests that data is ready
         }
       } catch(e) {
         console.error(`Load ${src} error:`, e);
