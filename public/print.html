@@ -618,7 +618,7 @@
     // Auto-fit label font sizes based on content length
     function calcLabelFontSizes(addr, items, name) {
       const totalLen = (addr || '').length + (items || '').length + (name || '').length;
-      let addr, items, name, phone;
+      let phone;
       if (totalLen > 200) {
         addr = '3mm'; items = '3mm'; name = '5.5mm'; phone = '3.5mm';
       } else if (totalLen > 130) {

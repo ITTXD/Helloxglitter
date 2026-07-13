@@ -16,6 +16,7 @@ let db2 = null;
 try {
   const app2 = firebase.initializeApp(firebaseConfig2, 'preorder');
   db2 = app2.firestore();
+  window.db2 = db2;
   console.log("✅ Firebase 2 (preorder) Initialized");
 } catch (e) {
   console.error("❌ Firebase 2 init error:", e);
