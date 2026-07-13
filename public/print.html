@@ -547,7 +547,7 @@
         <span class="count" id="selectCount">เลือก 0</span>
         <button class="bb bb-o" onclick="selectAll()">เลือกทั้งหมด</button>
         <button class="bb bb-o" onclick="clearAll()">ล้าง</button>
-        <button class="bb bb-p" onclick="generatePreview()">🖨️ สร้างใบปริ้น & ย้ายประวัติ</button>
+        <button class="bb bb-p" onclick="generatePreview()">🖨️ สร้างใบปริ้น</button>
       </div>
     </div>
 
@@ -669,13 +669,7 @@
       }
       allOrders = preorderOrders.waiting;
       historyOrders = preorderOrders.history;
-      // Status 3 (จัดส่งแล้ว) shows total all orders (both waiting + printed in main list)
-      if (filter === '3') {
-        allOrders = [...preorderOrders.waiting, ...preorderOrders.history];
-        historyOrders = [];
-      }
-      document.getElementById('count-preorder').textContent = 
-        filter === '3' ? preorderOrders.waiting.length + preorderOrders.history.length : preorderOrders.waiting.length;
+      document.getElementById('count-preorder').textContent = allOrders.length;
       selectedIds.clear();
       renderList(allOrders);
       renderHistory();
@@ -1145,9 +1139,12 @@
         area.innerHTML += noteHtml;
       }
 
-      // Auto move ONLY those that were not already in history
+      // Auto move only when in main tab or preorder filter "3" (จัดส่งแล้ว)
       if (idsToMark.length > 0) {
-        silentMarkAsPrinted(idsToMark);
+        const shouldMove = currentSource !== 'preorder' || document.getElementById('preorderStatusFilter').value === '3';
+        if (shouldMove) {
+          silentMarkAsPrinted(idsToMark);
+        }
       }
     }
 

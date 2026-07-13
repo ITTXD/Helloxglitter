@@ -170,7 +170,7 @@ async function run() {
     );
 
     // ============================================================
-    console.log('\n🧪 TEST 12: จัดส่งแล้ว shows total (waiting+history), count >= กำลังผลิต');
+    console.log('\n🧪 TEST 12: จัดส่งแล้ว count >= กำลังผลิต count');
     // ============================================================
     await assert(
       countStatus3 >= countStatus2,
@@ -243,6 +243,57 @@ async function run() {
     await assert(longLabelFont !== 'no cards', 'Order cards exist for selection');
     await assert(longLabelFont !== 'no label', 'Label rendered with addr element');
     await assert(true, `Label font-size for addr: ${longLabelFont}`);
+
+    // ============================================================
+    console.log('\n🧪 TEST 17: Print from "กำลังผลิต" (status 2) — count does NOT decrease');
+    // ============================================================
+    // Switch to status 2, note count, select first card, print, check count unchanged
+    await page.evaluate(() => {
+      document.getElementById('preorderStatusFilter').value = '2';
+      applyPreorderFilter();
+    });
+    await sleep(500);
+    const count2Before = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+    const cardExists2 = await page.evaluate(() => {
+      const card = document.querySelector('#completedList .card');
+      if (!card) return false;
+      card.click();
+      return true;
+    });
+    if (cardExists2 && count2Before > 0) {
+      await page.evaluate(() => generatePreview());
+      await sleep(2000);
+      const count2After = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+      await assert(count2After === count2Before, `Status 2 count unchanged: ${count2Before} → ${count2After}`);
+    } else {
+      await assert(true, 'No cards available to test (skipped)');
+    }
+
+    // ============================================================
+    console.log('\n🧪 TEST 18: Print from "จัดส่งแล้ว" (status 3) — count DOES decrease');
+    // ============================================================
+    await page.evaluate(() => {
+      document.getElementById('preorderStatusFilter').value = '3';
+      applyPreorderFilter();
+    });
+    await sleep(500);
+    const count3Before = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+    const cardExists3 = await page.evaluate(() => {
+      const cards = document.querySelectorAll('#completedList .card');
+      if (!cards.length) return false;
+      // Deselect all first, then select one
+      selectedIds.clear();
+      cards[0].click();
+      return true;
+    });
+    if (cardExists3 && count3Before > 0) {
+      await page.evaluate(() => generatePreview());
+      await sleep(3000);
+      const count3After = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+      await assert(count3After < count3Before, `Status 3 count decreased: ${count3Before} → ${count3After}`);
+    } else {
+      await assert(true, 'No cards available to test (skipped)');
+    }
 
     // ============================================================
     // SUMMARY

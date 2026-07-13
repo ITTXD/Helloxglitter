@@ -154,7 +154,57 @@ async function run() {
     }
 
     // ============================================================
-    console.log('\n🧪 TEST 11: Switch back to main tab — data still loads');
+    console.log('\n🧪 TEST 11: Print from "กำลังผลิต" (status 2 default) — count does NOT decrease');
+    // ============================================================
+    await page.evaluate(() => {
+      document.getElementById('preorderStatusFilter').value = '2';
+      applyPreorderFilter();
+    });
+    await sleep(500);
+    const count2Before = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+    const card2 = await page.evaluate(() => {
+      const cards = document.querySelectorAll('#completedList .card');
+      if (!cards.length) return null;
+      selectedIds.clear();
+      cards[0].click();
+      return cards[0].id;
+    });
+    if (card2 && count2Before > 0) {
+      await page.evaluate(() => generatePreview());
+      await sleep(2000);
+      const count2After = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+      await assert(count2After === count2Before, `Status 2 count unchanged: ${count2Before} → ${count2After}`);
+    } else {
+      await assert(true, 'No cards available to test status 2 (skipped)');
+    }
+
+    // ============================================================
+    console.log('\n🧪 TEST 12: Print from "จัดส่งแล้ว" (status 3) — count DOES decrease');
+    // ============================================================
+    await page.evaluate(() => {
+      document.getElementById('preorderStatusFilter').value = '3';
+      applyPreorderFilter();
+    });
+    await sleep(500);
+    const count3Before = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+    const card3 = await page.evaluate(() => {
+      const cards = document.querySelectorAll('#completedList .card');
+      if (!cards.length) return null;
+      selectedIds.clear();
+      cards[0].click();
+      return cards[0].id;
+    });
+    if (card3 && count3Before > 0) {
+      await page.evaluate(() => generatePreview());
+      await sleep(3000);
+      const count3After = await page.$eval('#count-preorder', el => parseInt(el.textContent.trim()) || 0);
+      await assert(count3After < count3Before, `Status 3 count decreased: ${count3Before} → ${count3After}`);
+    } else {
+      await assert(true, 'No cards available to test status 3 (skipped)');
+    }
+
+    // ============================================================
+    console.log('\n🧪 TEST 13: Switch back to main tab — data still loads');
     // ============================================================
     await page.click('#tab-main');
     await sleep(2000);
@@ -162,7 +212,7 @@ async function run() {
     await assert(mainCount !== '!' && mainCount !== '...', `Main tab count: ${mainCount}`);
 
     // ============================================================
-    console.log('\n🧪 TEST 12: No critical Firestore errors in console');
+    console.log('\n🧪 TEST 14: No critical Firestore errors in console');
     // ============================================================
     const criticalErrors = consoleErrors.filter(
       e => e.includes('permission-denied') || e.includes('unauthenticated')
@@ -175,7 +225,7 @@ async function run() {
     );
 
     // ============================================================
-    console.log('\n🧪 TEST 13: db2 Firestore collection "orders" queryable');
+    console.log('\n🧪 TEST 15: db2 Firestore collection "orders" queryable');
     // ============================================================
     const db2QueryOk = await page.evaluate(async () => {
       if (typeof db2 === 'undefined' || !db2) return false;
