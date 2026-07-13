@@ -88,11 +88,11 @@ async function run() {
       els.map(el => ({ value: el.value, text: el.textContent.trim() }))
     );
     const hasAllOption = options.some(o => o.value === 'all' && o.text.includes('ทั้งหมด'));
-    const hasStatus2Option = options.some(o => o.value === '2' && o.text.includes('Status 2'));
-    const hasStatus3Option = options.some(o => o.value === '3' && o.text.includes('Status 3'));
+    const hasStatus2Option = options.some(o => o.value === '2' && o.text.includes('กำลังผลิต'));
+    const hasStatus3Option = options.some(o => o.value === '3' && o.text.includes('จัดส่งแล้ว'));
     await assert(hasAllOption, `Dropdown has "ทั้งหมด" option`);
-    await assert(hasStatus2Option, `Dropdown has "Status 2" option`);
-    await assert(hasStatus3Option, `Dropdown has "Status 3" option`);
+    await assert(hasStatus2Option, `Dropdown has "กำลังผลิต" option`);
+    await assert(hasStatus3Option, `Dropdown has "จัดส่งแล้ว" option`);
     await assert(options.length === 3, `Dropdown has exactly 3 options (got ${options.length})`);
 
     // ============================================================
@@ -102,7 +102,7 @@ async function run() {
     await assert(defaultValue === '2', `Default value is "2" (got: "${defaultValue}")`);
 
     // ============================================================
-    console.log('\n🧪 TEST 7: Preorder data loads (status==2 filter applied by default)');
+    console.log('\n🧪 TEST 7: Preorder data loads (default filter = กำลังผลิต)');
     // ============================================================
     await sleep(5000);
     const countText = await page.$eval('#count-preorder', (el) => el.textContent.trim());
@@ -125,7 +125,7 @@ async function run() {
     );
 
     // ============================================================
-    console.log('\n🧪 TEST 9: Switch to "ทั้งหมด" — count >= status 2 count');
+    console.log('\n🧪 TEST 9: Switch to "ทั้งหมด" — count >= กำลังผลิต count');
     // ============================================================
     const countBefore = parseInt(countText) || 0;
     await page.select('#preorderStatusFilter', 'all');
@@ -133,37 +133,37 @@ async function run() {
     const countAll = await page.$eval('#count-preorder', (el) => parseInt(el.textContent.trim()) || 0);
     await assert(
       countAll >= countBefore,
-      `Count "ทั้งหมด" (${countAll}) >= "Status 2" (${countBefore})`
+      `Count "ทั้งหมด" (${countAll}) >= "กำลังผลิต" (${countBefore})`
     );
 
     // ============================================================
-    console.log('\n🧪 TEST 10: Switch back to "Status 2" — count <= "ทั้งหมด"');
+    console.log('\n🧪 TEST 10: Switch to "กำลังผลิต" — count <= "ทั้งหมด"');
     // ============================================================
     await page.select('#preorderStatusFilter', '2');
     await sleep(2000);
     const countStatus2 = await page.$eval('#count-preorder', (el) => parseInt(el.textContent.trim()) || 0);
     await assert(
       countStatus2 <= countAll,
-      `Count "Status 2" (${countStatus2}) <= "ทั้งหมด" (${countAll})`
+      `Count "กำลังผลิต" (${countStatus2}) <= "ทั้งหมด" (${countAll})`
     );
 
     // ============================================================
-    console.log('\n🧪 TEST 11: Switch to "Status 3" — count changes');
+    console.log('\n🧪 TEST 11: Switch to "จัดส่งแล้ว" — count <= "ทั้งหมด"');
     // ============================================================
     await page.select('#preorderStatusFilter', '3');
     await sleep(2000);
     const countStatus3 = await page.$eval('#count-preorder', (el) => parseInt(el.textContent.trim()) || 0);
     await assert(
       countStatus3 <= countAll,
-      `Count "Status 3" (${countStatus3}) <= "ทั้งหมด" (${countAll})`
+      `Count "จัดส่งแล้ว" (${countStatus3}) <= "ทั้งหมด" (${countAll})`
     );
 
     // ============================================================
-    console.log('\n🧪 TEST 12: Status 2 + Status 3 <= "ทั้งหมด"');
+    console.log('\n🧪 TEST 12: กำลังผลิต + จัดส่งแล้ว <= "ทั้งหมด"');
     // ============================================================
     await assert(
       countStatus2 + countStatus3 <= countAll,
-      `Status 2 (${countStatus2}) + Status 3 (${countStatus3}) <= "ทั้งหมด" (${countAll})`
+      `กำลังผลิต (${countStatus2}) + จัดส่งแล้ว (${countStatus3}) <= "ทั้งหมด" (${countAll})`
     );
 
     // ============================================================
